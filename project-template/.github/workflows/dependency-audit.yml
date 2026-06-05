@@ -1,0 +1,27 @@
+name: Dependency audit
+
+on:
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"   # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  npm-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      # Fail the job on High/Critical advisories in production dependencies.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high

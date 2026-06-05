@@ -1,0 +1,11 @@
+# gitleaks config for this repo (the setup kit itself).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Docs contain illustrative placeholders, not real secrets"
+paths = [
+  '''(^|/)docs/.*\.md$''',
+  '''(^|/)README\.md$''',
+  '''(^|/)project-template/.*''',
+]

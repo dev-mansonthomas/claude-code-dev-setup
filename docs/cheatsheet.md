@@ -1,0 +1,64 @@
+# Claude Code — one-page cheat sheet
+
+> Print this. Full guide: [claude-code-setup.md](claude-code-setup.md).
+
+## The loop
+```
+/brainstorm → /spec → /plan-feature → build → /code-review + /security-review → /ship → /doc-sync
+qualify       spec     TDD plan        impl     review                            gate    docs
+```
+
+## Launch
+```bash
+claude            # start in current repo
+claude -c         # continue last session
+claude --resume   # pick a past session
+claude -p "…"     # headless (scripts/CI)
+make new-project NAME=app   # scaffold ../app
+```
+
+## In-session essentials
+| Key/Cmd | Action |
+|---|---|
+| `Shift+Tab` | cycle modes → **plan mode** (read-only planning) |
+| `/context` | what's filling the window |
+| `/compact` | summarize to free context (same task) |
+| `/clear` | reset for a new task |
+| `@file` | pin a file into context |
+| `#text` | save a durable fact to CLAUDE.md |
+| "think hard" / "ultrathink" | more reasoning budget |
+| `/model` · `/fast` | choose model · toggle Fast mode |
+| `/mcp` · `/agents` · `/plugin` | servers · subagents · plugins |
+
+## Memory = files, not chat
+- `CLAUDE.md` (global `~/.claude` + per-project) and `docs/` are the brain.
+- Anything that must outlive the session → write it to a file.
+
+## Use the right tool
+| Need | Reach for |
+|---|---|
+| Current lib version/API | Context7 MCP — "use context7" |
+| Build/validate web UI | `frontend-design`, Playwright MCP, `playwright-test` |
+| Redis modeling/ops | `redis-core`, `redis-query-engine`, `redis-vector-search`, `redis-observability`, `redis-security` |
+| Query project's Redis | per-project Redis MCP (`.mcp.json`) |
+| Terse output / compact CLI | `caveman`, `rtk-cli` |
+
+## Security & git (non-negotiable)
+- Secrets → env vars + `.gitignore`; the secret-guard hook blocks leaky commits.
+- Conventional Commits; branch off `main`; **push only when asked**.
+- `/security-review` for auth/input/data; `/ship` before any push.
+
+## Skills upkeep
+```bash
+npx skills list      # installed
+npx skills update    # refresh
+./doctor.sh          # full health check
+```
+
+## Fix-its
+| Symptom | Fix |
+|---|---|
+| `claude` not found | new terminal / `exec zsh -l` |
+| MCP not responding | `/mcp` re-auth; run its command standalone |
+| Hook blocked a commit | real secret? fix it. False positive? allowlist in `.gitleaks.toml` |
+| Skill won't trigger | name it explicitly; confirm with `npx skills list` |

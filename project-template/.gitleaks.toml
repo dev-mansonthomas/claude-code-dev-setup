@@ -1,0 +1,15 @@
+# gitleaks config for {{PROJECT_NAME}}.
+# Extends the built-in ruleset; add allowlists here for known false positives.
+# Used by the local pre-commit guard AND the secret-scan CI workflow.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Project-wide allowlist (keep tight)"
+paths = [
+  '''(^|/)\.env\.example$''',   # example file holds placeholders, not real secrets
+  '''(^|/)docs/.*\.md$''',      # docs may contain illustrative fake tokens
+]
+# Example: ignore a specific known-safe string (uncomment & adapt)
+# regexes = [ '''EXAMPLE_FAKE_TOKEN_[A-Z0-9]+''' ]

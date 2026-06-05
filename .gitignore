@@ -1,0 +1,17 @@
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# scratch from `make new-project DEST=...` tests and sed backups
+*.bak
+/tmp-*/
+
+# secrets — never
+.env
+.env.*
+!.env.example
+*.pem
+*.key

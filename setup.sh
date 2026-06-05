@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# setup.sh — one command to bring a Mac to "professional Claude Code" parity.
+# Idempotent: safe to re-run. Each step lives in scripts/NN-*.sh.
+#
+# Usage:
+#   ./setup.sh                # full setup (symlinks global config)
+#   ./setup.sh --copy         # copy global config instead of symlinking
+#   ./setup.sh --no-mcp       # skip MCP server registration
+#   ./setup.sh --no-plugins   # skip the plugins info step
+#   ./setup.sh --yes          # assume "yes" to prompts (non-interactive)
+#   ./setup.sh --help
+set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/lib.sh
+source "$HERE/scripts/lib.sh"
+
+WITH_MCP=1
+WITH_PLUGINS=1
+export COPY_MODE="${COPY_MODE:-0}"
+export AUTO_YES="${AUTO_YES:-0}"
+
+usage() { sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 0; }
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --copy)       export COPY_MODE=1 ;;
+    --no-mcp)     WITH_MCP=0 ;;
+    --no-plugins) WITH_PLUGINS=0 ;;
+    --yes|-y)     export AUTO_YES=1 ;;
+    -h|--help)    usage ;;
+    *) die "Unknown option: $1 (try --help)" ;;
+  esac
+  shift
+done
+
+printf '%s\n' "$C_BOLD${C_CYAN}
+  Claude Code — professional dev setup
+  =====================================$C_RESET"
+info "Repo: $HERE"
+info "Steps: preflight -> claude-code -> skills$([[ $WITH_MCP == 1 ]] && echo ' -> mcp') \
+$([[ $WITH_PLUGINS == 1 ]] && echo '-> plugins') -> global-config"
+
+run() {
+  local script="$HERE/scripts/$1"
+  [[ -f "$script" ]] || die "Missing $script"
+  bash "$script"
+}
+
+run 00-preflight.sh
+run 10-claude-code.sh
+run 20-skills.sh
+[[ $WITH_MCP == 1 ]]     && run 30-mcp.sh
+[[ $WITH_PLUGINS == 1 ]] && run 40-plugins.sh
+run 50-global-config.sh
+
+step "Done"
+ok "Setup complete."
+cat <<'NEXT'
+
+  Next steps:
+    1. Open a NEW terminal (or run: exec zsh -l) so `claude` is on your PATH.
+    2. Verify everything:           ./doctor.sh
+    3. Read the guide:              docs/claude-code-setup.md
+    4. Start a project the right way:
+         make new-project NAME=my-app
+         cd ../my-app && claude
+       then run /brainstorm to qualify the idea before any code.
+
+NEXT

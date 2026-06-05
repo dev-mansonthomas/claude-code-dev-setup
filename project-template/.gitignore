@@ -1,0 +1,47 @@
+# --- Secrets & local env (NEVER commit) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*_id_ed25519
+*_id_rsa
+secrets.*
+credentials.*
+
+# --- Node ---
+node_modules/
+dist/
+build/
+coverage/
+.next/
+.turbo/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+.pnp.*
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# --- Java / PHP ---
+target/
+*.class
+vendor/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# --- Claude Code local overrides (keep shared settings.json) ---
+.claude/settings.local.json
