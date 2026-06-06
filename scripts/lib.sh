@@ -4,6 +4,14 @@
 # Not meant to be executed directly.
 
 # ---------------------------------------------------------------------------
+# Homebrew: quiet + deterministic for scripted installs (export 0 to opt out).
+#   NO_ENV_HINTS   — hide the "did you know / future default" hint blocks
+#   NO_AUTO_UPDATE — don't re-index all formulae on every single install call
+# ---------------------------------------------------------------------------
+export HOMEBREW_NO_ENV_HINTS="${HOMEBREW_NO_ENV_HINTS:-1}"
+export HOMEBREW_NO_AUTO_UPDATE="${HOMEBREW_NO_AUTO_UPDATE:-1}"
+
+# ---------------------------------------------------------------------------
 # Colours (disabled when not a TTY or when NO_COLOR is set)
 # ---------------------------------------------------------------------------
 if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then

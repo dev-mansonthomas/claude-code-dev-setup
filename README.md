@@ -37,9 +37,9 @@ The script installs `gh`, `gitleaks`, `uv`, and `jq` via Homebrew if missing.
 git clone https://github.com/dev-mansonthomas/claude-code-dev-setup.git
 cd claude-code-dev-setup
 
-# 2. install & configure everything (idempotent — safe to re-run).
-#    Asks 1-2 quick questions (optional Context7 key — Enter to skip;
-#    confirm the Claude install). Use --yes to accept defaults non-interactively.
+# 2. install & configure everything (idempotent, NON-interactive by default).
+#    Want a Context7 API key? export CONTEXT7_API_KEY=... first (optional; else keyless).
+#    Prefer to confirm each step? add --interactive.
 ./setup.sh
 
 # 3. open a NEW terminal so `claude` is on your PATH
@@ -72,7 +72,7 @@ That's it. `setup.sh` will:
 ./setup.sh --no-mcp      # skip MCP registration
 ./setup.sh --no-plugins  # skip the (optional) plugins info step
 ./setup.sh --no-extras   # skip the monitoring/multi-project tooling
-./setup.sh --yes         # non-interactive (assume yes)
+./setup.sh --interactive # confirm before each step (default: non-interactive)
 ```
 
 By default config is **symlinked** from this repo into `~/.claude`, so

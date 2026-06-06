@@ -3,12 +3,13 @@
 # Idempotent: safe to re-run. Each step lives in scripts/NN-*.sh.
 #
 # Usage:
-#   ./setup.sh                # full setup (symlinks global config)
+#   ./setup.sh                # full setup, NON-interactive (symlinks global config)
 #   ./setup.sh --copy         # copy global config instead of symlinking
 #   ./setup.sh --no-mcp       # skip MCP server registration
 #   ./setup.sh --no-plugins   # skip the plugins info step
 #   ./setup.sh --no-extras    # skip the monitoring/multi-project tooling step
-#   ./setup.sh --yes          # assume "yes" to prompts (non-interactive)
+#   ./setup.sh --interactive  # confirm before each step (default: non-interactive)
+#   CONTEXT7_API_KEY=xxx ./setup.sh   # use a Context7 key (optional; else keyless)
 #   ./setup.sh --help
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,7 +20,7 @@ WITH_MCP=1
 WITH_PLUGINS=1
 WITH_EXTRAS=1
 export COPY_MODE="${COPY_MODE:-0}"
-export AUTO_YES="${AUTO_YES:-0}"
+export AUTO_YES="${AUTO_YES:-1}"   # non-interactive by default; --interactive to prompt
 
 usage() { sed -n '2,/^set -/{/^set -/!p;}' "$0" | sed 's/^# \{0,1\}//'; exit 0; }
 
@@ -29,7 +30,8 @@ while [[ $# -gt 0 ]]; do
     --no-mcp)     WITH_MCP=0 ;;
     --no-plugins) WITH_PLUGINS=0 ;;
     --no-extras)  WITH_EXTRAS=0 ;;
-    --yes|-y)     export AUTO_YES=1 ;;
+    --yes|-y)         export AUTO_YES=1 ;;
+    --interactive|-i) export AUTO_YES=0 ;;
     -h|--help)    usage ;;
     *) die "Unknown option: $1 (try --help)" ;;
   esac
