@@ -11,7 +11,7 @@ help:
 	@echo "Examples:"
 	@echo "  make setup                 # install & configure everything"
 	@echo "  make doctor                # read-only health check"
-	@echo "  make new-project NAME=app  # scaffold ../app from the template"
+	@echo "  ./new-project.sh app       # scaffold ../app  (or: make new-project NAME=app)"
 
 ## setup: install Claude Code, skills, MCP, and global config
 .PHONY: setup
@@ -26,19 +26,10 @@ doctor:
 ## lint: shellcheck all shell scripts
 .PHONY: lint
 lint:
-	@shellcheck -x --source-path=SCRIPTDIR setup.sh doctor.sh grafana-up.sh grafana-down.sh scripts/*.sh claude-config/hooks/*.sh && echo "shellcheck: clean"
+	@shellcheck -x --source-path=SCRIPTDIR setup.sh doctor.sh grafana-up.sh grafana-down.sh new-project.sh scripts/*.sh claude-config/hooks/*.sh && echo "shellcheck: clean"
 
 ## new-project: scaffold a new project from project-template/ (NAME=... [DEST=...])
 .PHONY: new-project
 new-project:
-	@test -n "$(NAME)" || { echo "Usage: make new-project NAME=my-app [DEST=path]"; exit 1; }
-	@dest="$(DEST)"; dest="$${dest:-../$(NAME)}"; \
-	 test ! -e "$$dest" || { echo "Error: $$dest already exists"; exit 1; }; \
-	 mkdir -p "$$dest"; \
-	 cp -R project-template/. "$$dest"/; \
-	 find "$$dest" -type f \( -name '*.md' -o -name '*.json' -o -name '*.toml' -o -name '*.yml' \) \
-	   -exec sed -i.bak -e 's/{{PROJECT_NAME}}/$(NAME)/g' -e "s/{{DATE}}/$$(date +%F)/g" {} +; \
-	 find "$$dest" -name '*.bak' -delete; \
-	 ( cd "$$dest" && git init -q && git add -A ); \
-	 echo "✓ Created $$dest"; \
-	 echo "  Next: cd $$dest && claude   (then run /brainstorm to qualify the idea)"
+	@test -n "$(NAME)" || { echo "Usage: make new-project NAME=my-app [DEST=path]  (or just: ./new-project.sh my-app)"; exit 1; }
+	@./new-project.sh "$(NAME)" "$(DEST)"

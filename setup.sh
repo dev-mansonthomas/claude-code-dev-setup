@@ -68,7 +68,7 @@ cat <<'NEXT'
     2. Verify everything:           ./doctor.sh
     3. Read the guide:              docs/claude-code-setup.md
     4. Start a project the right way:
-         make new-project NAME=my-app
+         ./new-project.sh my-app
          cd ../my-app && claude
        then run /brainstorm to qualify the idea before any code.
     5. Monitoring is installed — keep a usage gauge handy:

@@ -24,7 +24,7 @@ cd claude-code-dev-setup && ./setup.sh
 Then, for every new app:
 
 ```bash
-make new-project NAME=my-app && cd ../my-app && claude
+./new-project.sh my-app && cd ../my-app && claude
 # inside Claude:  /brainstorm  →  /spec  →  /plan-feature  →  build  →  /ship
 ```
 
@@ -288,7 +288,7 @@ security → performance → docs → ship. Do it once and the workflow is yours
 
 ### Step 0 — scaffold & open
 ```bash
-make new-project NAME=shortlink
+./new-project.sh shortlink
 cd ../shortlink
 claude
 ```

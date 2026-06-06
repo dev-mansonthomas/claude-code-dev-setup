@@ -14,7 +14,7 @@ claude            # start in current repo
 claude -c         # continue last session
 claude --resume   # pick a past session
 claude -p "…"     # headless (scripts/CI)
-make new-project NAME=app   # scaffold ../app
+./new-project.sh app        # scaffold ../app  (or: make new-project NAME=app)
 ```
 
 ## In-session essentials

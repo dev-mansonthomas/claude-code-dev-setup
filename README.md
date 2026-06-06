@@ -81,7 +81,7 @@ By default config is **symlinked** from this repo into `~/.claude`, so
 ## Start a new project the right way
 
 ```bash
-make new-project NAME=my-app
+./new-project.sh my-app          # (or: make new-project NAME=my-app)
 cd ../my-app
 claude
 ```
@@ -97,12 +97,13 @@ scaffold already includes a project `CLAUDE.md`, human `README.md`, the
 |------|------------|
 | `setup.sh` / `doctor.sh` | installer (idempotent) / read-only health check |
 | `grafana-up.sh` / `grafana-down.sh` | start / stop the local Grafana monitoring dashboards |
+| `new-project.sh` | scaffold a new project from `project-template/` (also `make new-project`) |
 | `scripts/` | the individual, re-runnable setup steps |
 | `claude-config/CLAUDE.md` | **global engineering standards** (loaded every session) |
 | `claude-config/settings.json` | model, permission allowlist, hook wiring |
 | `claude-config/hooks/git-secret-guard.sh` | blocks `git commit`/`push` if gitleaks finds a secret |
 | `claude-commands/` | `/brainstorm` `/spec` `/plan-feature` `/ship` `/doc-sync` |
-| `project-template/` | scaffold copied by `make new-project` |
+| `project-template/` | the template `new-project.sh` copies from |
 | `docs/claude-code-setup.md` | the full guide (also the "Claude Code setup" doc tab) |
 | `docs/cheatsheet.md` | one-page daily reference |
 | `docs/workspace-and-monitoring.md` | usage/limit tracking, context, OTEL dashboards, worktrees & multi-monitor layout |
