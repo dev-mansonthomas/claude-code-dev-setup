@@ -55,6 +55,17 @@ npx skills update    # refresh
 ./doctor.sh          # full health check
 ```
 
+## Monitoring & parallel
+| Goal | Command |
+|---|---|
+| Usage now / today | `npx ccusage@latest` · `npx ccusage@latest blocks --live` |
+| Live limit gauge | `claude-monitor --plan max20 --view realtime` |
+| Context / status line | `/context` · `npx -y ccstatusline@latest` (one-time setup) |
+| Parallel project | `claude --worktree <name>` (isolated branch + worktree) |
+| Many sessions (TUI) | `cs` (Claude Squad: tmux + worktrees) |
+
+Full guide: [workspace-and-monitoring.md](workspace-and-monitoring.md).
+
 ## Fix-its
 | Symptom | Fix |
 |---|---|

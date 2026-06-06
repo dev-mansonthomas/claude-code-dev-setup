@@ -92,6 +92,7 @@ scaffold already includes a project `CLAUDE.md`, human `README.md`, the
 | `project-template/` | scaffold copied by `make new-project` |
 | `docs/claude-code-setup.md` | the full guide (also the "Claude Code setup" doc tab) |
 | `docs/cheatsheet.md` | one-page daily reference |
+| `docs/workspace-and-monitoring.md` | usage/limit tracking, context, OTEL dashboards, worktrees & multi-monitor layout |
 
 ## Keeping current
 

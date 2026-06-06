@@ -384,6 +384,8 @@ claude -p "…"          # headless one-shot (scripts/CI)
 | Review code / security | `/code-review` / `/security-review` |
 | Run your workflow | `/brainstorm` `/spec` `/plan-feature` `/ship` `/doc-sync` |
 | See MCP / skills | `/mcp` / `npx skills list` |
+| Track usage / limit | `npx ccusage@latest blocks --live` ([details](workspace-and-monitoring.md)) |
+| Work on 2–3 projects | `claude --worktree <name>` (isolated branch per project) |
 
 **When to `/clear` vs `/compact`**
 - `/compact` — same task, conversation got long. Keeps a summary.
