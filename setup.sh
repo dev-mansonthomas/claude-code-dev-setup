@@ -71,6 +71,6 @@ cat <<'NEXT'
        then run /brainstorm to qualify the idea before any code.
     5. Monitoring is installed — keep a usage gauge handy:
          claude-monitor --plan max20 --view realtime
-       and for dashboards: cd ~/Tools/claude-code-otel && make up  (http://localhost:3000)
+       and for dashboards:  ./grafana-up.sh      (stop with ./grafana-down.sh)
 
 NEXT

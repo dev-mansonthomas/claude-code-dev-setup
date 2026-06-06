@@ -28,7 +28,8 @@ The OTEL stack is **cloned but not started** (it runs Docker containers — star
 your call, not something an installer should do silently). When you want Grafana:
 
 ```bash
-cd ~/Tools/claude-code-otel && make up        # then open http://localhost:3000 (admin/admin)
+./grafana-up.sh      # start the dashboards (opens http://localhost:3000, admin/admin)
+./grafana-down.sh    # stop them
 ```
 
 Telemetry is **local-only** (`localhost:4317`) — nothing leaves your machine. If the stack

@@ -108,20 +108,13 @@ local collector and you get real dashboards.
 **`claude-code-otel`** ([ColeMurray/claude-code-otel](https://github.com/ColeMurray/claude-code-otel))
 bundles a turnkey stack (OTEL Collector + Prometheus + Loki + Grafana with ready dashboards).
 
+**`./setup.sh` already cloned this stack and wired telemetry into `settings.json`.** Start
+and stop the dashboards with the root-level scripts:
 ```bash
-git clone https://github.com/ColeMurray/claude-code-otel.git
-cd claude-code-otel
-make up                              # starts collector + Prometheus + Loki + Grafana
+./grafana-up.sh      # start Grafana, then open http://localhost:3000 (admin/admin)
+./grafana-down.sh    # stop the containers
 ```
-Then enable telemetry in Claude Code (export before launching `claude`, or add an `env`
-block to `~/.claude/settings.json`):
-```bash
-export CLAUDE_CODE_ENABLE_TELEMETRY=1
-export OTEL_METRICS_EXPORTER=otlp
-export OTEL_LOGS_EXPORTER=otlp
-export OTEL_EXPORTER_OTLP_PROTOCOL=grpc
-export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
-```
+(Raw controls if you want them: `cd ~/Tools/claude-code-otel && make up|down|logs|status`.)
 Open Grafana at **http://localhost:3000** (default `admin` / `admin`); Prometheus is on
 `:9090`. Dashboards cover cost/usage, sessions & activity, tool performance, latency, and
 error logs (metrics like `claude_code.token.usage`, `claude_code.cost.usage`,
@@ -131,20 +124,10 @@ error logs (metrics like `claude_code.token.usage`, `claude_code.cost.usage`,
 > nothing leaves the machine. Overkill for a quick fix; genuinely useful when you run
 > several agents for hours and want to see where time/tokens went.
 
-To make it always-on without touching your shell, add to `~/.claude/settings.json`
-(remember: that edits the repo copy — commit it):
-```json
-{
-  "env": {
-    "CLAUDE_CODE_ENABLE_TELEMETRY": "1",
-    "OTEL_METRICS_EXPORTER": "otlp",
-    "OTEL_LOGS_EXPORTER": "otlp",
-    "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
-    "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317"
-  }
-}
-```
-(If the collector isn't running, the exporter simply can't connect — harmless.)
+Telemetry is **already wired** in `settings.json` by the kit (the `env` block with
+`CLAUDE_CODE_ENABLE_TELEMETRY=1` → `localhost:4317`), so every session exports automatically.
+To disable it, remove that `env` block. If the collector isn't running, the exporter simply
+can't connect — harmless.
 
 ---
 

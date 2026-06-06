@@ -60,6 +60,7 @@ npx skills update    # refresh
 |---|---|
 | Usage now / today | `npx ccusage@latest` · `npx ccusage@latest blocks --live` |
 | Live limit gauge | `claude-monitor --plan max20 --view realtime` |
+| Dashboards (Grafana) | `./grafana-up.sh` · `./grafana-down.sh` |
 | Context / status line | `/context` · `npx -y ccstatusline@latest` (one-time setup) |
 | Parallel project | `claude --worktree <name>` (isolated branch + worktree) |
 | Many sessions (TUI) | `cs` (Claude Squad: tmux + worktrees) |

@@ -26,7 +26,7 @@ doctor:
 ## lint: shellcheck all shell scripts
 .PHONY: lint
 lint:
-	@shellcheck -x --source-path=SCRIPTDIR setup.sh doctor.sh scripts/*.sh claude-config/hooks/*.sh && echo "shellcheck: clean"
+	@shellcheck -x --source-path=SCRIPTDIR setup.sh doctor.sh grafana-up.sh grafana-down.sh scripts/*.sh claude-config/hooks/*.sh && echo "shellcheck: clean"
 
 ## new-project: scaffold a new project from project-template/ (NAME=... [DEST=...])
 .PHONY: new-project

@@ -56,7 +56,8 @@ That's it. `setup.sh` will:
    backed up first).
 7. **Dev tooling** — install the usage gauge (`claude-monitor`), Claude Squad (`cs`),
    and clone the OTEL/Grafana stack; the status line (ccstatusline) and telemetry are
-   wired into `settings.json`. See [docs/tooling-setup.md](docs/tooling-setup.md).
+   wired into `settings.json`. Start the dashboards anytime with **`./grafana-up.sh`**
+   (stop: `./grafana-down.sh`). See [docs/tooling-setup.md](docs/tooling-setup.md).
 
 ### Options
 
@@ -88,6 +89,7 @@ scaffold already includes a project `CLAUDE.md`, human `README.md`, the
 | Path | What it is |
 |------|------------|
 | `setup.sh` / `doctor.sh` | installer (idempotent) / read-only health check |
+| `grafana-up.sh` / `grafana-down.sh` | start / stop the local Grafana monitoring dashboards |
 | `scripts/` | the individual, re-runnable setup steps |
 | `claude-config/CLAUDE.md` | **global engineering standards** (loaded every session) |
 | `claude-config/settings.json` | model, permission allowlist, hook wiring |
