@@ -39,6 +39,8 @@ TODO
 - Connection via env var (never hard-code). Local dev DB: TODO.
 - Key naming: `TODO:scheme`. Data structures used: TODO.
 - Reach for the `redis-*` skills for modeling/ops questions.
+- If `.mcp.json` is present (added via `new-project.sh --redis`), the agent can query
+  this DB through the Redis MCP — point its `--url` at your instance (env var for auth).
 
 ## Gotchas / decisions
 <!-- Things that surprised you; link to docs/adr/* for the "why". -->

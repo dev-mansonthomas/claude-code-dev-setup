@@ -81,11 +81,13 @@ By default config is **symlinked** from this repo into `~/.claude`, so
 ## Start a new project the right way
 
 ```bash
-./new-project.sh my-app          # (or: make new-project NAME=my-app)
+./new-project.sh my-app              # (or: make new-project NAME=my-app)
+./new-project.sh my-app --redis      # ...and wire the Redis MCP into this project
 cd ../my-app
 claude
 ```
 
+It asks whether to add the **Redis MCP** to this project (or use `--redis` / `--no-mcp`).
 Inside Claude, run `/brainstorm` to qualify the idea before any code. The
 scaffold already includes a project `CLAUDE.md`, human `README.md`, the
 `docs/` structure (PRD, specs, architecture, ADRs), `.gitignore`,

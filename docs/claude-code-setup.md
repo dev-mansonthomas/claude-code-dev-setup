@@ -183,6 +183,10 @@ claude mcp add --scope project redis -- \
 This writes `.mcp.json` in the project. Keep the password in an env var; commit
 `.mcp.json` only if it contains no secret.
 
+**Shortcut:** `./new-project.sh <name> --redis` (or answering the prompt it shows)
+writes this `.mcp.json` for you when scaffolding — Redis MCP is offered per-project,
+never installed globally, since it points at a specific DB.
+
 ### 4.3 Slash commands
 Built-in essentials:
 
