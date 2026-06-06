@@ -50,9 +50,9 @@ claude -p "…"     # headless (scripts/CI)
 
 ## Skills upkeep
 ```bash
-npx skills list      # installed
-npx skills update    # refresh
-./doctor.sh          # full health check
+ls ~/.claude/skills          # installed skills
+./setup.sh                   # idempotent: refresh skills + config
+./doctor.sh                  # full health check
 ```
 
 ## Monitoring & parallel
@@ -73,4 +73,4 @@ Full guide: [workspace-and-monitoring.md](workspace-and-monitoring.md).
 | `claude` not found | new terminal / `exec zsh -l` |
 | MCP not responding | `/mcp` re-auth; run its command standalone |
 | Hook blocked a commit | real secret? fix it. False positive? allowlist in `.gitleaks.toml` |
-| Skill won't trigger | name it explicitly; confirm with `npx skills list` |
+| Skill won't trigger | name it explicitly; confirm with `ls ~/.claude/skills` |

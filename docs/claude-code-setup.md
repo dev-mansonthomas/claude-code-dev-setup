@@ -158,9 +158,9 @@ skill"). You already have ~29 installed. The ones you'll lean on:
 
 Manage them:
 ```bash
-npx skills list          # what's installed
-npx skills update        # refresh
-npx skills add owner/repo --skill name -g -a claude-code
+ls ~/.claude/skills          # what's installed (the kit symlinks them here)
+./setup.sh                   # idempotent re-run: (re)installs / refreshes skills
+git -C ~/.claude/skill-sources/<repo> pull   # update one source repo
 ```
 
 ### 4.2 MCP servers — connect external capabilities
@@ -383,7 +383,7 @@ claude -p "…"          # headless one-shot (scripts/CI)
 | Think harder | add "think hard" / "ultrathink" |
 | Review code / security | `/code-review` / `/security-review` |
 | Run your workflow | `/brainstorm` `/spec` `/plan-feature` `/ship` `/doc-sync` |
-| See MCP / skills | `/mcp` / `npx skills list` |
+| See MCP / skills | `/mcp` / `ls ~/.claude/skills` |
 | Track usage / limit | `npx ccusage@latest blocks --live` ([details](workspace-and-monitoring.md)) |
 | Work on 2–3 projects | `claude --worktree <name>` (isolated branch per project) |
 
@@ -402,7 +402,7 @@ claude -p "…"          # headless one-shot (scripts/CI)
 | `claude: command not found` | open a new terminal / `exec zsh -l` (PATH from native installer) |
 | MCP server not responding | `/mcp` to re-auth; check the command runs standalone |
 | Hook blocks a legit commit | it found a secret-shaped string — fix it, or allowlist in `.gitleaks.toml` |
-| Skill not triggering | name it explicitly ("use the X skill"); `npx skills list` to confirm it's installed |
+| Skill not triggering | name it explicitly ("use the X skill"); `ls ~/.claude/skills` to confirm it's installed |
 | Context feels "lost" | you probably `/clear`-ed or it `/compact`-ed; re-`@`-mention key files |
 
 ---

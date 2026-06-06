@@ -112,8 +112,8 @@ scaffold already includes a project `CLAUDE.md`, human `README.md`, the
 ## Keeping current
 
 ```bash
-git -C path/to/claude-code-dev-setup pull   # update config (symlinks pick it up)
-npx skills update                            # refresh installed skills
+git -C path/to/claude-code-dev-setup pull   # get the latest kit (config symlinks update automatically)
+./setup.sh                                  # idempotent re-run: refreshes skills, MCP, dev tools, config
 # Claude Code self-updates in the background
 ```
 
