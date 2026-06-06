@@ -33,15 +33,21 @@ The script installs `gh`, `gitleaks`, `uv`, and `jq` via Homebrew if missing.
 ## Quickstart
 
 ```bash
-# 1. get this repo
+# 1. get this repo  (already have it? just `cd` in and skip the clone)
 git clone https://github.com/dev-mansonthomas/claude-code-dev-setup.git
 cd claude-code-dev-setup
 
-# 2. install & configure everything (idempotent — safe to re-run)
+# 2. install & configure everything (idempotent — safe to re-run).
+#    Asks 1-2 quick questions (optional Context7 key — Enter to skip;
+#    confirm the Claude install). Use --yes to accept defaults non-interactively.
 ./setup.sh
 
-# 3. open a NEW terminal so `claude` is on your PATH, then verify
-./doctor.sh
+# 3. open a NEW terminal so `claude` is on your PATH
+exec zsh -l                      # (or just open a new tab/window)
+
+# 4. log in to Claude Code (first run only), then verify
+claude                           # complete the one-time login, then quit
+./doctor.sh                      # expect mostly green: CLI, linked config, skills, MCP, dev tooling
 ```
 
 That's it. `setup.sh` will:
@@ -57,13 +63,14 @@ That's it. `setup.sh` will:
 7. **Dev tooling** — install the usage gauge (`claude-monitor`), Claude Squad (`cs`),
    and clone the OTEL/Grafana stack; the status line (ccstatusline) and telemetry are
    wired into `settings.json`. Start the dashboards anytime with **`./grafana-up.sh`**
-   (stop: `./grafana-down.sh`). See [docs/tooling-setup.md](docs/tooling-setup.md).
+   (needs Docker running; stop: `./grafana-down.sh`). See [docs/tooling-setup.md](docs/tooling-setup.md).
 
 ### Options
 
 ```bash
 ./setup.sh --copy        # copy config into ~/.claude instead of symlinking
 ./setup.sh --no-mcp      # skip MCP registration
+./setup.sh --no-plugins  # skip the (optional) plugins info step
 ./setup.sh --no-extras   # skip the monitoring/multi-project tooling
 ./setup.sh --yes         # non-interactive (assume yes)
 ```
@@ -116,6 +123,7 @@ backup the installer made:
 
 ```bash
 rm ~/.claude/CLAUDE.md ~/.claude/settings.json ~/.claude/hooks/git-secret-guard.sh
+rm ~/.claude/commands/{brainstorm,spec,plan-feature,ship,doc-sync}.md
 ls ~/.claude/backups/      # restore anything you want from here
 ```
 
