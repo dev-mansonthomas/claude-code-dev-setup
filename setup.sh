@@ -7,6 +7,7 @@
 #   ./setup.sh --copy         # copy global config instead of symlinking
 #   ./setup.sh --no-mcp       # skip MCP server registration
 #   ./setup.sh --no-plugins   # skip the plugins info step
+#   ./setup.sh --no-extras    # skip the monitoring/multi-project tooling step
 #   ./setup.sh --yes          # assume "yes" to prompts (non-interactive)
 #   ./setup.sh --help
 set -euo pipefail
@@ -16,16 +17,18 @@ source "$HERE/scripts/lib.sh"
 
 WITH_MCP=1
 WITH_PLUGINS=1
+WITH_EXTRAS=1
 export COPY_MODE="${COPY_MODE:-0}"
 export AUTO_YES="${AUTO_YES:-0}"
 
-usage() { sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 0; }
+usage() { sed -n '2,/^set -/{/^set -/!p;}' "$0" | sed 's/^# \{0,1\}//'; exit 0; }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --copy)       export COPY_MODE=1 ;;
     --no-mcp)     WITH_MCP=0 ;;
     --no-plugins) WITH_PLUGINS=0 ;;
+    --no-extras)  WITH_EXTRAS=0 ;;
     --yes|-y)     export AUTO_YES=1 ;;
     -h|--help)    usage ;;
     *) die "Unknown option: $1 (try --help)" ;;
@@ -37,8 +40,8 @@ printf '%s\n' "$C_BOLD${C_CYAN}
   Claude Code — professional dev setup
   =====================================$C_RESET"
 info "Repo: $HERE"
-info "Steps: preflight -> claude-code -> skills$([[ $WITH_MCP == 1 ]] && echo ' -> mcp') \
-$([[ $WITH_PLUGINS == 1 ]] && echo '-> plugins') -> global-config"
+info "Steps: preflight -> claude-code -> skills$([[ $WITH_MCP == 1 ]] && echo ' -> mcp')\
+$([[ $WITH_PLUGINS == 1 ]] && echo ' -> plugins') -> global-config$([[ $WITH_EXTRAS == 1 ]] && echo ' -> dev-tools')"
 
 run() {
   local script="$HERE/scripts/$1"
@@ -52,6 +55,7 @@ run 20-skills.sh
 [[ $WITH_MCP == 1 ]]     && run 30-mcp.sh
 [[ $WITH_PLUGINS == 1 ]] && run 40-plugins.sh
 run 50-global-config.sh
+[[ $WITH_EXTRAS == 1 ]]  && run 60-dev-tools.sh
 
 step "Done"
 ok "Setup complete."
@@ -65,5 +69,8 @@ cat <<'NEXT'
          make new-project NAME=my-app
          cd ../my-app && claude
        then run /brainstorm to qualify the idea before any code.
+    5. Monitoring is installed — keep a usage gauge handy:
+         claude-monitor --plan max20 --view realtime
+       and for dashboards: cd ~/Tools/claude-code-otel && make up  (http://localhost:3000)
 
 NEXT

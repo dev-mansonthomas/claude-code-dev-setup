@@ -8,6 +8,10 @@ How to **watch token/limit usage**, **monitor context**, **observe the agent**, 
 > limits) in the middle of a sprint. The tools below are your *fuel gauge* and *flight
 > recorder*, not a billing report.
 
+> **Already installed:** `./setup.sh` installs and wires all of this automatically
+> (see [tooling-setup.md](tooling-setup.md)). The sections below focus on *using* each
+> piece day-to-day; the install commands are kept inline for reference.
+
 ---
 
 ## 1. Token, cost & limit tracking
@@ -258,6 +262,6 @@ landscape screen to drive.
 ---
 
 ### See also
-- [optional-tooling-setup.md](optional-tooling-setup.md) — install these tools (one script) & wire ccstatusline + OpenTelemetry.
+- [tooling-setup.md](tooling-setup.md) — what `setup.sh` installs & wires (ccstatusline, OTEL) + finishing steps.
 - [claude-code-setup.md](claude-code-setup.md) — the full onboarding guide & toolbox.
 - [cheatsheet.md](cheatsheet.md) — one-page daily reference.

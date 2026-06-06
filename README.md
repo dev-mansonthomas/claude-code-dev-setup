@@ -54,12 +54,16 @@ That's it. `setup.sh` will:
 6. **Global config** — link `CLAUDE.md`, `settings.json`, the secret-guard hook,
    and the workflow slash commands into `~/.claude` (your existing files are
    backed up first).
+7. **Dev tooling** — install the usage gauge (`claude-monitor`), Claude Squad (`cs`),
+   and clone the OTEL/Grafana stack; the status line (ccstatusline) and telemetry are
+   wired into `settings.json`. See [docs/tooling-setup.md](docs/tooling-setup.md).
 
 ### Options
 
 ```bash
 ./setup.sh --copy        # copy config into ~/.claude instead of symlinking
 ./setup.sh --no-mcp      # skip MCP registration
+./setup.sh --no-extras   # skip the monitoring/multi-project tooling
 ./setup.sh --yes         # non-interactive (assume yes)
 ```
 
@@ -93,6 +97,7 @@ scaffold already includes a project `CLAUDE.md`, human `README.md`, the
 | `docs/claude-code-setup.md` | the full guide (also the "Claude Code setup" doc tab) |
 | `docs/cheatsheet.md` | one-page daily reference |
 | `docs/workspace-and-monitoring.md` | usage/limit tracking, context, OTEL dashboards, worktrees & multi-monitor layout |
+| `docs/tooling-setup.md` | what the dev-tools step installs/wires + manual finishing steps |
 
 ## Keeping current
 

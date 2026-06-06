@@ -73,6 +73,17 @@ else
   note "Skipping MCP check (no claude CLI)."
 fi
 
+step "Dev tooling (monitoring & multi-project)"
+check "claude-monitor (usage gauge)" has claude-monitor
+if has claude-squad || has cs; then ok "Claude Squad (cs)"; pass=$((pass+1)); else note "Claude Squad not installed (scripts/60-dev-tools.sh)"; fi
+if has npx; then ok "ccusage / ccstatusline available via npx"; pass=$((pass+1)); else note "npx missing — ccusage/ccstatusline unavailable"; fi
+oteldir="${OTEL_DIR:-$HOME/Tools/claude-code-otel}"
+if [[ -d "$oteldir/.git" ]]; then ok "claude-code-otel cloned"; pass=$((pass+1)); else note "claude-code-otel not cloned (optional Grafana stack)"; fi
+if [[ -e "$CDIR/settings.json" ]] && has jq; then
+  if jq -e '.statusLine' "$CDIR/settings.json" >/dev/null 2>&1; then ok "status line wired (ccstatusline)"; pass=$((pass+1)); else note "no statusLine in settings.json"; fi
+  if jq -e '.env.CLAUDE_CODE_ENABLE_TELEMETRY' "$CDIR/settings.json" >/dev/null 2>&1; then ok "OpenTelemetry wired"; pass=$((pass+1)); else note "OTEL not wired in settings.json"; fi
+fi
+
 step "Summary"
 printf '  %s%d passed%s, %s%d warnings%s, %s%d failed%s\n' \
   "$C_GREEN" "$pass" "$C_RESET" "$C_YELLOW" "$warns" "$C_RESET" "$C_RED" "$fail" "$C_RESET"
