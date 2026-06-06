@@ -258,5 +258,6 @@ landscape screen to drive.
 ---
 
 ### See also
+- [optional-tooling-setup.md](optional-tooling-setup.md) — install these tools (one script) & wire ccstatusline + OpenTelemetry.
 - [claude-code-setup.md](claude-code-setup.md) — the full onboarding guide & toolbox.
 - [cheatsheet.md](cheatsheet.md) — one-page daily reference.
