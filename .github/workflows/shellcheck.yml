@@ -16,4 +16,4 @@ jobs:
       - name: Run shellcheck
         run: |
           sudo apt-get update && sudo apt-get install -y shellcheck
-          shellcheck -x --source-path=SCRIPTDIR setup.sh doctor.sh grafana-up.sh grafana-down.sh new-project.sh scripts/*.sh claude-config/hooks/*.sh
+          shellcheck -x --source-path=SCRIPTDIR setup.sh doctor.sh grafana-up.sh grafana-down.sh new-project.sh scripts/*.sh claude-config/hooks/*.sh project-template/.githooks/pre-commit

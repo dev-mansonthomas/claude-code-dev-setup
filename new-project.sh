@@ -83,7 +83,15 @@ JSON
   info "Edit .mcp.json to point at your DB. For auth, set REDIS_URL and avoid committing secrets."
 fi
 
-( cd "$dest" && git init -q && git add -A )
+(
+  cd "$dest"
+  git init -q
+  if [[ -f .githooks/pre-commit ]]; then
+    chmod +x .githooks/pre-commit
+    git config core.hooksPath .githooks   # enable the local secret-scan pre-commit hook
+  fi
+  git add -A
+)
 
 ok "Created $dest"
 log ""

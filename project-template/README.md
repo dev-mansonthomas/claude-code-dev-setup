@@ -22,6 +22,13 @@ git clone <REPO_URL>
 cd {{PROJECT_NAME}}
 ```
 
+> **Enable the secret-scan hook** (one-time, after cloning):
+> ```bash
+> git config core.hooksPath .githooks
+> ```
+> A local pre-commit hook (gitleaks) then blocks any commit that contains a secret.
+> Needs gitleaks (`brew install gitleaks`); CI re-checks on push regardless.
+
 ## 2. Configure
 ```bash
 cp .env.example .env   # then open .env and fill in the values (see comments inside)

@@ -45,6 +45,17 @@ fi
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
 
 REDACT="--redact --no-banner"
+
+# Apply the repo's .gitleaks.toml allowlist if present (so .env.example / docs don't
+# trip false positives). gl() wraps gitleaks and adds --config when one exists.
+GL_CFG=""
+_gl_root="$(git rev-parse --show-toplevel 2>/dev/null)"
+[[ -n "$_gl_root" && -f "$_gl_root/.gitleaks.toml" ]] && GL_CFG="$_gl_root/.gitleaks.toml"
+gl() {
+  if [[ -n "$GL_CFG" ]]; then gitleaks "$@" --config "$GL_CFG" >/dev/null 2>&1 || true
+  else gitleaks "$@" >/dev/null 2>&1 || true; fi
+}
+
 report="$(mktemp -t gitleaks-report.XXXXXX.json)"
 trap 'rm -f "$report"; [[ -n "${scan_dir:-}" ]] && rm -rf "$scan_dir"' EXIT
 
@@ -58,10 +69,10 @@ scan_dir_cmd() {
   local dir="$1"
   if gitleaks dir --help >/dev/null 2>&1; then
     # shellcheck disable=SC2086
-    gitleaks dir "$dir" $REDACT --report-format json --report-path "$report" >/dev/null 2>&1 || true
+    gl dir "$dir" $REDACT --report-format json --report-path "$report"
   else
     # shellcheck disable=SC2086
-    gitleaks detect --no-git --source "$dir" $REDACT --report-format json --report-path "$report" >/dev/null 2>&1 || true
+    gl detect --no-git --source "$dir" $REDACT --report-format json --report-path "$report"
   fi
 }
 
@@ -112,10 +123,10 @@ if [[ $is_push -eq 1 ]]; then
   [[ -z "$range" ]] && { printf '⚠ git-secret-guard: no upstream to diff against — skipping push scan.\n' >&2; exit 0; }
   if gitleaks git --help >/dev/null 2>&1; then
     # shellcheck disable=SC2086
-    gitleaks git . --log-opts="$range" $REDACT --report-format json --report-path "$report" >/dev/null 2>&1 || true
+    gl git . --log-opts="$range" $REDACT --report-format json --report-path "$report"
   else
     # shellcheck disable=SC2086
-    gitleaks detect --log-opts="$range" $REDACT --report-format json --report-path "$report" >/dev/null 2>&1 || true
+    gl detect --log-opts="$range" $REDACT --report-format json --report-path "$report"
   fi
   n="$(findings_count)"
   [[ "$n" =~ ^[0-9]+$ && "$n" -gt 0 ]] && block "push" "$n"

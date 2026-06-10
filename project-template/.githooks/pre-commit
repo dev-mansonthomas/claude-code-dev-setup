@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# pre-commit — block commits that introduce secrets (gitleaks on the STAGED snapshot).
+#
+# Why this and not only the global Claude hook: a git pre-commit hook runs *after*
+# staging, right before the commit is created — so it scans EXACTLY what will be
+# committed, whether you ran `git add … && git commit` combined or separately, and
+# whoever commits (you, Claude, a teammate). It auto-loads this repo's .gitleaks.toml,
+# so allowlisted paths (.env.example, docs) don't trigger false positives.
+#
+# Enabled via:  git config core.hooksPath .githooks   (new-project.sh does this for you).
+# Fail-open if gitleaks isn't installed. Bypass (discouraged): git commit --no-verify.
+set -uo pipefail
+
+command -v gitleaks >/dev/null 2>&1 || {
+  printf '⚠ gitleaks not installed — skipping secret scan (brew install gitleaks).\n' >&2
+  exit 0
+}
+
+# Nothing staged to add/copy/modify → nothing to scan.
+git diff --cached --quiet --diff-filter=ACM && exit 0
+
+report="$(mktemp -t gitleaks-precommit.XXXXXX.json 2>/dev/null || echo "${TMPDIR:-/tmp}/gitleaks-precommit.$$.json")"
+trap 'rm -f "$report"' EXIT
+
+# Modern gitleaks: `gitleaks git --staged`. Older builds: `gitleaks protect --staged`.
+# Run from the repo root (where git puts us) so ./.gitleaks.toml is auto-loaded.
+if gitleaks git --help 2>&1 | grep -q -- '--staged'; then
+  gitleaks git --staged --no-banner --redact --report-format json --report-path "$report" >/dev/null 2>&1 || true
+else
+  gitleaks protect --staged --no-banner --redact --report-format json --report-path "$report" >/dev/null 2>&1 || true
+fi
+
+if command -v jq >/dev/null 2>&1; then
+  n="$(jq 'length' "$report" 2>/dev/null || echo 0)"
+else
+  n=0
+  [[ -s "$report" ]] && grep -q '"RuleID"' "$report" && n=1
+fi
+
+if [[ "$n" =~ ^[0-9]+$ && "$n" -gt 0 ]]; then
+  {
+    printf '\n⛔ Commit blocked — gitleaks found %s potential secret(s) in staged changes:\n' "$n"
+    if command -v jq >/dev/null 2>&1; then
+      jq -r '.[] | "   • \(.RuleID) in \(.File):\(.StartLine)"' "$report" 2>/dev/null | head -20
+    fi
+    printf '\n   Fix: move it to an env var + .gitignore. False positive? add an allow rule to .gitleaks.toml.\n'
+    printf '   (Bypass, discouraged: git commit --no-verify)\n\n'
+  } >&2
+  exit 1
+fi
+exit 0

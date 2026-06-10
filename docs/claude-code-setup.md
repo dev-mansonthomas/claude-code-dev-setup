@@ -229,18 +229,24 @@ missing, so it never bricks your git.
 
 ## 5. Security & git hygiene (code + what's pushed)
 
-Two layers, because you asked for both:
+Defense in depth — local feedback **plus** server-side enforcement:
 
 **Local (fast feedback)**
-- The **secret-guard hook** stops secrets at commit/push time.
-- The global `CLAUDE.md` requires: env vars for all secrets, `.gitignore`
-  covering `.env*`/keys, review the diff before committing, Conventional
-  Commits, branch off `main`, **push only when you ask**.
+- **Per-project git pre-commit hook** (gitleaks on the staged snapshot) — the robust
+  local gate: it scans *exactly* what's committed (no stale-index / `add && commit`
+  quirk), applies the repo's `.gitleaks.toml` allowlist (no false positives), and runs
+  for anyone who commits. `new-project.sh` wires it; teammates run
+  `git config core.hooksPath .githooks` once after cloning.
+- **Global secret-guard hook** (`~/.claude`) — a zero-setup backstop in any folder.
+- The global `CLAUDE.md` requires: env vars for all secrets, `.gitignore` covering
+  `.env*`/keys, review the diff before committing, Conventional Commits, branch off
+  `main`, **push only when you ask**.
 
-**CI (enforced for the team)** — in every scaffolded project:
-- `secret-scan.yml` — gitleaks on every push/PR.
-- `dependency-audit.yml` — `npm audit` (High/Critical) on PRs + weekly.
-- `ci-node.yml` — lint, typecheck, test, build.
+**Server-side (enforced — a local hook can be skipped with `--no-verify`, this can't)**
+- `secret-scan.yml` — gitleaks on every push/PR (in every scaffolded project).
+- **GitHub Push Protection + Secret scanning** — enable on the repo (Settings → Code
+  security; free for public repos) to block secrets at push, on GitHub's side.
+- `dependency-audit.yml` (deps) + `ci-node.yml` (lint, types, test, build).
 
 **Code security** comes from the loop: `/security-review` on anything touching
 auth, input, or data; the `redis-security` skill for ACLs/TLS/exposure; OWASP
