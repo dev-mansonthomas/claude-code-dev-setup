@@ -141,10 +141,11 @@ bugs). Don't use it for routine edits.
 
 ## 4. Your toolbox
 
-### 4.1 Skills — expertise that auto-loads
-Skills are instruction sets the agent pulls in **automatically** when relevant
-(based on their description), or you can nudge it ("use the redis-vector-search
-skill"). You already have ~29 installed. The ones you'll lean on:
+### 4.1 Skills — expertise Claude loads itself
+Skills **auto-trigger from their `description`**: Claude reads the name+description of
+every installed skill and invokes the matching one **itself** — you don't call them
+(you *can* name one to force it: "use the redis-vector-search skill"). If one isn't
+firing, its description is the lever (`skill-creator` optimizes it). The ones you'll lean on:
 
 - **Redis engineering** (`redis/agent-skills`): `redis-core`, `redis-clustering`,
   `redis-connections`, `redis-query-engine`, `redis-vector-search`,
@@ -153,8 +154,12 @@ skill"). You already have ~29 installed. The ones you'll lean on:
   `redis-product-ui`, `redis-presentation-decks`, `redis-excalidraw-diagrams`,
   `redis-lucidchart-diagrams`, `redis-insight-plugin`, `playwright-test`,
   `playwright-cli-agent`, `caveman`, `rtk-cli`, the `agent-*` coordination set.
-- **Frontend** (`anthropics/skills`): `frontend-design`; plus
-  `web-design-guidelines` for a11y/UX review.
+- **Anthropic** (`anthropics/skills`): `frontend-design`, `web-artifacts-builder`
+  (claude.ai React/Tailwind/shadcn artifacts), `canvas-design`, `theme-factory`,
+  `mcp-builder` (build MCP servers), `webapp-testing`, `pdf`, plus `web-design-guidelines`.
+- **Code/file search** (`netresearch/file-search-skill`): `file-search` (ripgrep + ast-grep + fd).
+- **Methodology**: the **`superpowers`** plugin adds planning/TDD/debugging skills **and
+  instructions that make Claude actively use them** — run `/using-superpowers` in a session.
 
 Manage them:
 ```bash

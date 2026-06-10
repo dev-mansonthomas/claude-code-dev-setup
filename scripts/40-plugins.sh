@@ -1,37 +1,36 @@
 #!/usr/bin/env bash
-# 40-plugins.sh — plugins are optional and best managed interactively, so this
-# step is informational: it reports the current plugin state and tells you the
-# exact in-session commands to add a marketplace and install plugins.
-# (The non-interactive plugin CLI verbs change between versions; we don't guess.)
+# 40-plugins.sh — install Claude Code plugins (marketplace + plugin).
+# Tries the non-interactive CLI; if the verbs differ in your Claude version, it prints
+# the exact in-session `/plugin` commands. Idempotent + best-effort (never fatal).
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
 source "$HERE/lib.sh"
 
-step "Plugins (optional, interactive)"
+step "Plugins"
 
 if ! CLAUDE="$(claude_bin)"; then
-  warn "claude not found on PATH — skipping plugin info."
+  warn "claude not found on PATH — skipping (open a new terminal, then re-run setup)."
   exit 0
 fi
 
-# Show current marketplaces/plugins if the CLI exposes them (don't fail if not).
-if "$CLAUDE" plugin marketplace list >/dev/null 2>&1; then
-  info "Configured marketplaces:"
-  "$CLAUDE" plugin marketplace list 2>/dev/null || true
-fi
+# Format: "<marketplace-repo>|<plugin-name>"
+PLUGINS=(
+  "obra/superpowers-marketplace|superpowers"   # TDD/planning/debug methodology; makes Claude use its skills
+)
 
-cat <<'INFO'
+for entry in "${PLUGINS[@]}"; do
+  mkt="${entry%%|*}"; plug="${entry#*|}"
+  info "Plugin '$plug' (marketplace: $mkt)"
+  "$CLAUDE" plugin marketplace add "$mkt" >/dev/null 2>&1 || true
+  if "$CLAUDE" plugin install "$plug" >/dev/null 2>&1; then
+    ok "installed $plug"
+  else
+    warn "Couldn't install '$plug' via the CLI (verb differs) — do it in a Claude session:"
+    log "    /plugin marketplace add $mkt"
+    log "    /plugin                      # then browse & install '$plug'"
+  fi
+done
 
-  Plugins bundle commands + agents + skills + hooks under one install.
-  Add them from inside a Claude Code session (most reliable):
-
-    /plugin marketplace add anthropics/claude-code     # add a marketplace
-    /plugin                                            # browse & install (TUI)
-
-  You already have the Redis + SA skills installed directly (step 20), so
-  plugins are optional. Revisit this once you find a marketplace you trust.
-
-INFO
-
-ok "Plugins step complete (nothing changed automatically)."
+info "Tip: run /using-superpowers in a session so Claude actively reaches for its skills."
+ok "Plugins step complete."

@@ -28,7 +28,8 @@ info "$present_now skill(s) already in ~/.claude/skills."
 SKILL_SOURCES=(
   "https://github.com/fcenedes/redis_sa_skills||caveman"
   "https://github.com/redis/agent-skills||redis-core"
-  "https://github.com/anthropics/skills|frontend-design|frontend-design"
+  "https://github.com/anthropics/skills|frontend-design pdf canvas-design theme-factory web-artifacts-builder mcp-builder webapp-testing|web-artifacts-builder"
+  "https://github.com/netresearch/file-search-skill|file-search|file-search"
 )
 
 linked=0; skipped=0
@@ -65,14 +66,17 @@ for entry in "${SKILL_SOURCES[@]}"; do
     continue
   fi
 
-  # Each skill is a directory containing SKILL.md (depth 2 or 3 in these repos).
+  # Each skill is a directory containing SKILL.md. Filtered sources (one named skill,
+  # e.g. massgen's file-search) may bury it deep, so search deeper there; --all sources
+  # stay shallow to avoid matching nested example SKILL.md files.
+  maxd=3; [[ -n "$filter" ]] && maxd=12
   while IFS= read -r skillmd; do
     sdir="$(dirname "$skillmd")"; name="$(basename "$sdir")"
     if [[ -n "$filter" ]]; then
       case " $filter " in *" $name "*) ;; *) continue ;; esac
     fi
     link_one "$sdir"
-  done < <(find "$dir" -mindepth 2 -maxdepth 3 -name SKILL.md -not -path '*/.git/*' 2>/dev/null)
+  done < <(find "$dir" -mindepth 2 -maxdepth "$maxd" -name SKILL.md -not -path '*/.git/*' 2>/dev/null)
 done
 
 ok "Skills done: $linked newly linked, $skipped source(s) already present."

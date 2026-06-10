@@ -99,15 +99,23 @@ control it:
 
 ## Toolbox — reach for the right thing
 
+**Use installed Skills proactively.** Skills auto-trigger from their `description` — when a
+task matches one, invoke it yourself without being asked (you may also name one explicitly).
+
 - **Up-to-date docs / versions** → Context7 MCP (`use context7`).
-- **Web UI build** → `frontend-design` (quality UI), `redis-brand-ui` /
-  `redis-product-ui` (Redis look), `web-design-guidelines` (a11y/UX review).
-- **Browser testing** → `playwright-test` (write tests), `playwright-cli-agent`
-  (drive/debug a live browser).
+- **Web UI build** → `frontend-design` (quality UI), `web-artifacts-builder` (claude.ai
+  HTML artifacts: React/Tailwind/shadcn), `canvas-design` / `theme-factory` (visuals,
+  themes), `redis-brand-ui` / `redis-product-ui` (Redis look), `web-design-guidelines` (a11y/UX).
+- **Browser & web testing** → `playwright-test`, `playwright-cli-agent`, `webapp-testing`.
+- **Build an MCP server** → `mcp-builder`.
+- **Docs / files** → `pdf`, `docx`, `pptx`, `xlsx` (SA deliverables & analysis).
+- **Fast code/file search** → `file-search` (ripgrep + ast-grep).
 - **Redis modeling/ops** → `redis-core`, `redis-clustering`, `redis-connections`,
   `redis-query-engine`, `redis-vector-search`, `redis-semantic-cache`,
   `redis-observability`, `redis-security`.
 - **Token efficiency** → `caveman` (terse mode), `rtk-cli` (compact CLI output).
+- **Autonomous TDD/debug methodology** → the `superpowers` plugin; `/using-superpowers`
+  has Claude drive the whole workflow with its skills.
 - **Multi-agent / big tasks** → `agent-delegation-planning`,
   `agent-delegation-routing`, `agent-capability-ledger`, `agent-memory-*`.
 - **Built-in reviews** → `/code-review`, `/security-review`, `/verify`.
