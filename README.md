@@ -26,6 +26,7 @@ checks and installs the small extras for you.
 | Homebrew | `brew --version` | [brew.sh](https://brew.sh) |
 | Git | `git --version` | `xcode-select --install` |
 | Node.js (for `npx`) | `node --version` | `nvm install --lts` |
+| VS Code (or your editor) | `code --version` | to watch the code while Claude writes it — `brew install --cask visual-studio-code` |
 | A Claude Pro/Max/Team/Enterprise/Console account | — | required for Claude Code |
 
 The script installs `gh`, `gitleaks`, `uv`, and `jq` via Homebrew if missing.
@@ -81,11 +82,16 @@ By default config is **symlinked** from this repo into `~/.claude`, so
 ## Start a new project the right way
 
 ```bash
-./new-project.sh my-app              # (or: make new-project NAME=my-app)
-./new-project.sh my-app --redis      # ...and wire the Redis MCP into this project
-cd ../my-app
-claude
+# scaffold → open the editor → start the agent, in one line:
+./new-project.sh my-app --redis && cd ../my-app && code . && claude
 ```
+
+`code .` opens **VS Code on the project so you can watch and read the code while
+Claude writes it** — they're the same files on disk, so edit in either. This is the
+recommended setup: **editor (read) + Claude (write) side by side** on your main
+screen (see [docs/workspace-and-monitoring.md](docs/workspace-and-monitoring.md)).
+`--redis` is optional — it wires the Redis MCP for this project; omit it (or pass
+`--no-mcp`) to skip. `make new-project NAME=my-app` also works.
 
 It asks whether to add the **Redis MCP** to this project (or use `--redis` / `--no-mcp`).
 Inside Claude, run `/brainstorm` to qualify the idea before any code. The

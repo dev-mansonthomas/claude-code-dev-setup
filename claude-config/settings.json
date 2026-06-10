@@ -1,12 +1,4 @@
 {
-  "model": "opus",
-  "includeCoAuthoredBy": true,
-  "statusLine": {
-    "type": "command",
-    "command": "npx -y ccstatusline@latest",
-    "padding": 0,
-    "refreshInterval": 10
-  },
   "env": {
     "CLAUDE_CODE_ENABLE_TELEMETRY": "1",
     "OTEL_METRICS_EXPORTER": "otlp",
@@ -14,6 +6,7 @@
     "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
     "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317"
   },
+  "includeCoAuthoredBy": true,
   "permissions": {
     "allow": [
       "Read",
@@ -61,6 +54,7 @@
     "deny": [],
     "ask": []
   },
+  "model": "opus",
   "hooks": {
     "PreToolUse": [
       {
@@ -73,5 +67,12 @@
         ]
       }
     ]
-  }
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "npx -y ccstatusline@latest",
+    "padding": 0,
+    "refreshInterval": 10
+  },
+  "theme": "dark"
 }

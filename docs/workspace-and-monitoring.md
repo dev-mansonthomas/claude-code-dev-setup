@@ -215,6 +215,18 @@ Tuned for the setup: **two 38" 4K** (one **portrait**, one **landscape**) + the 
 - **MacBook screen = glance band.** Low-attention, always-on dashboards: `claude-monitor`
   (or `ccusage blocks --live`), the Grafana tab, and comms. You glance; you don't stare.
 
+**Terminals/panes worth keeping open** (split iTerm2 with ⌘D / ⌘⇧D, save the arrangement)
+- **Claude** — the agent; it holds its pane while working a task.
+- **A free shell** — *yours*, to run ad-hoc `git diff` / `git log` / a script / poke the app
+  **without interrupting Claude** (it can't run your commands while it's mid-task).
+- **A usage gauge** — `claude-monitor` (or `ccusage blocks --live`) so you don't hit the
+  limit mid-sprint. *(Optional — the status line already shows context/cost inline.)*
+- **A test watcher** during TDD — `npm test -- --watch` / `pytest-watch`: red→green live as
+  Claude codes.
+- **App / logs** when iterating — `npm run dev`, `docker logs -f`, the OTEL collector…
+- ⚠️ **Don't** run two Claude sessions editing the **same** files — use `claude --worktree`
+  (or `cs`) so each gets an isolated branch+dir. Extra *helper* shells on one project are fine.
+
 **Running 2–3 projects at once — two patterns**
 - **Spaces per project (simple):** put each project in its own macOS **Space**, each Space
   using the same layout above. Swipe (Ctrl+←/→) to switch projects. Keep
