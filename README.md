@@ -106,6 +106,7 @@ scaffold already includes a project `CLAUDE.md`, human `README.md`, the
 | `setup.sh` / `doctor.sh` | installer (idempotent) / read-only health check |
 | `grafana-up.sh` / `grafana-down.sh` | start / stop the local Grafana monitoring dashboards |
 | `new-project.sh` | scaffold a new project from `project-template/` (also `make new-project`) |
+| `sync-project.sh` | pull updated kit infra files into an existing project (also `make sync-project`) |
 | `scripts/` | the individual, re-runnable setup steps |
 | `claude-config/CLAUDE.md` | **global engineering standards** (loaded every session) |
 | `claude-config/settings.json` | model, permission allowlist, hook wiring |
@@ -124,6 +125,15 @@ git -C path/to/claude-code-dev-setup pull   # get the latest kit (config symlink
 ./setup.sh                                  # idempotent re-run: refreshes skills, MCP, dev tools, config
 # Claude Code self-updates in the background
 ```
+
+**Existing projects** don't auto-update (the scaffold is a one-time copy). Global config
+(`~/.claude`) is covered by the pull above. To pull updated kit *infra* files (secret-scan
+hook, editorconfig, secret-scan CI) into a project — dry-run, then apply:
+```bash
+./sync-project.sh ../my-app            # show what differs (or: make sync-project DIR=../my-app)
+./sync-project.sh ../my-app --apply    # copy them in, then review & commit
+```
+It never touches your customized files (CLAUDE.md, README, docs/, .gitignore, language CI).
 
 ## Uninstall / revert
 

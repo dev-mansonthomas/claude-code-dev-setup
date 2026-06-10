@@ -26,10 +26,16 @@ doctor:
 ## lint: shellcheck all shell scripts
 .PHONY: lint
 lint:
-	@shellcheck -x --source-path=SCRIPTDIR setup.sh doctor.sh grafana-up.sh grafana-down.sh new-project.sh scripts/*.sh claude-config/hooks/*.sh project-template/.githooks/pre-commit && echo "shellcheck: clean"
+	@shellcheck -x --source-path=SCRIPTDIR setup.sh doctor.sh grafana-up.sh grafana-down.sh new-project.sh sync-project.sh scripts/*.sh claude-config/hooks/*.sh project-template/.githooks/pre-commit && echo "shellcheck: clean"
 
 ## new-project: scaffold a new project from project-template/ (NAME=... [DEST=...])
 .PHONY: new-project
 new-project:
 	@test -n "$(NAME)" || { echo "Usage: make new-project NAME=my-app [DEST=path]  (or just: ./new-project.sh my-app)"; exit 1; }
 	@./new-project.sh "$(NAME)" "$(DEST)"
+
+## sync-project: pull updated kit infra files into an existing project (DIR=... [APPLY=1])
+.PHONY: sync-project
+sync-project:
+	@test -n "$(DIR)" || { echo "Usage: make sync-project DIR=../my-app [APPLY=1]  (or: ./sync-project.sh ../my-app [--apply])"; exit 1; }
+	@./sync-project.sh "$(DIR)" $(if $(APPLY),--apply,)
