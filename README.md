@@ -99,6 +99,60 @@ scaffold already includes a project `CLAUDE.md`, human `README.md`, the
 `docs/` structure (PRD, specs, architecture, ADRs), `.gitignore`,
 `.gitleaks.toml`, and CI workflows (tests, secret scan, dependency audit).
 
+## Per-project `.claude/settings.json` recipes (by stack)
+
+A project's `.claude/settings.json` **merges with your global** `~/.claude/settings.json`
+(allow-lists are unioned). Use the per-project file for **stack-specific** bits so tests run
+**sandboxed without prompts**:
+- **`env`** — point package caches at a **sandbox-writable** path (project-local) + test flags;
+- **`sandbox.network.allowedDomains`** — the package registries the sandbox may reach;
+- a few **`Bash(...)`** allows for tools not already in your global list.
+
+Gitignore the cache dirs. Tune the sandbox live with **`/sandbox`** (see
+[sandboxing docs](https://code.claude.com/docs/en/sandboxing)).
+
+**Python (uv + pytest)**
+```json
+{
+  "env": { "UV_CACHE_DIR": ".uv-cache", "TESTCONTAINERS_RYUK_DISABLED": "true" },
+  "sandbox": { "network": { "allowedDomains": ["pypi.org", "files.pythonhosted.org"] } },
+  "permissions": { "allow": ["Bash(uv:*)", "Bash(pytest:*)", "Bash(ruff:*)", "Bash(mypy:*)"], "deny": [], "ask": [] }
+}
+```
+`.gitignore`: `.uv-cache/`
+
+**Node / React (npm or pnpm + Vite)**
+```json
+{
+  "env": { "npm_config_cache": ".npm-cache" },
+  "sandbox": { "network": { "allowedDomains": ["registry.npmjs.org"] } },
+  "permissions": { "allow": ["Bash(npm:*)", "Bash(pnpm:*)", "Bash(npx:*)", "Bash(vite:*)", "Bash(node:*)"], "deny": [], "ask": [] }
+}
+```
+`.gitignore`: `.npm-cache/`  (pnpm store: `pnpm config set store-dir .pnpm-store` + gitignore it)
+
+**Angular (ng)**
+```json
+{
+  "env": { "npm_config_cache": ".npm-cache" },
+  "sandbox": { "network": { "allowedDomains": ["registry.npmjs.org"] } },
+  "permissions": { "allow": ["Bash(ng:*)", "Bash(npm:*)", "Bash(npx:*)", "Bash(node:*)"], "deny": [], "ask": [] }
+}
+```
+
+**Java / Spring (Maven or Gradle)**
+```json
+{
+  "env": { "GRADLE_USER_HOME": ".gradle" },
+  "sandbox": { "network": { "allowedDomains": ["repo.maven.apache.org", "repo1.maven.org", "plugins.gradle.org", "services.gradle.org"] } },
+  "permissions": { "allow": ["Bash(./mvnw:*)", "Bash(mvn:*)", "Bash(./gradlew:*)", "Bash(gradle:*)", "Bash(java:*)"], "deny": [], "ask": [] }
+}
+```
+Maven: point the local repo at a writable path — `mvn -Dmaven.repo.local=.m2 …` — and gitignore `.m2/` `.gradle/`.
+
+> **Integration tests** using Docker / testcontainers **can't run in the OS sandbox** (they
+> need the Docker socket + container networking) → run those unsandboxed, or in a VM/devcontainer.
+
 ## What's in here
 
 | Path | What it is |
