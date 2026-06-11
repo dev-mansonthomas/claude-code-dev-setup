@@ -79,6 +79,20 @@ That's it. `setup.sh` will:
 By default config is **symlinked** from this repo into `~/.claude`, so
 `git pull` here keeps both your MacBooks in sync.
 
+## Run everything in an isolated VM (recommended)
+
+For strong isolation, run Claude + tools + Docker inside an **always-on Colima Linux VM**.
+You edit on the host (`~/Projects` is mounted in); Claude, builds, tests and the Grafana
+stack run **in the VM** — a compromised dep/agent can't touch `~/.ssh`, your keychain, or the
+rest of macOS.
+```bash
+./vm-up.sh                 # once: start + provision the VM  (make vm-up)
+cc my-app                  # open VS Code on the host + a Claude session inside the VM
+```
+`new-project.sh` auto-launches `cc` after scaffolding; monitoring (Grafana) runs in the same
+VM (no second VM). Inside the VM you can safely use `--dangerously-skip-permissions`.
+Full guide + caveats: **[docs/isolation.md](docs/isolation.md)**.
+
 ## Start a new project the right way
 
 ```bash
@@ -161,6 +175,8 @@ Maven: point the local repo at a writable path — `mvn -Dmaven.repo.local=.m2 �
 | `grafana-up.sh` / `grafana-down.sh` | start / stop the local Grafana monitoring dashboards |
 | `new-project.sh` | scaffold a new project from `project-template/` (also `make new-project`) |
 | `sync-project.sh` | pull updated kit infra files into an existing project (also `make sync-project`) |
+| `vm-up.sh` | start + provision the always-on Colima VM — the isolated default env (`make vm-up`) |
+| `cc` | enter the VM at a project + open VS Code (the default isolated workflow) |
 | `scripts/` | the individual, re-runnable setup steps |
 | `claude-config/CLAUDE.md` | **global engineering standards** (loaded every session) |
 | `claude-config/settings.json` | model, permission allowlist, hook wiring |
@@ -171,6 +187,7 @@ Maven: point the local repo at a writable path — `mvn -Dmaven.repo.local=.m2 �
 | `docs/cheatsheet.md` | one-page daily reference |
 | `docs/workspace-and-monitoring.md` | usage/limit tracking, context, OTEL dashboards, worktrees & multi-monitor layout |
 | `docs/tooling-setup.md` | what the dev-tools step installs/wires + manual finishing steps |
+| `docs/isolation.md` | the always-on Colima VM workflow (isolated default env) |
 
 ## Keeping current
 
