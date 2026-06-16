@@ -10,8 +10,42 @@ Claude Code environment: the CLI, the right Skills, useful MCP servers, a strong
 global `CLAUDE.md`, a secret-scanning git guard, workflow slash commands, and a
 project scaffolder.
 
+**Real work runs inside an isolated VM by default** — so a malicious dependency, a
+prompt-injection, or a runaway agent can't reach your SSH keys, keychain, cloud tokens, or
+the rest of your Mac. The bare host (Mac app) stays for quick, trusted tasks. See
+[Security model](#security-model--why-this-exists).
+
 > New to all this? Read **[docs/claude-code-setup.md](docs/claude-code-setup.md)** —
 > a zero-assumed-knowledge guide that takes you from install to top-level.
+
+---
+
+## Security model — why this exists
+
+Claude Code is powerful, and "powerful" cuts both ways: the agent — or a malicious npm/pip
+package it installs, or a prompt-injection in a page it reads — runs with **your** user's rights.
+On the bare host that means it can read `~/.ssh`, your macOS keychain, cloud/API tokens and
+browser sessions, and delete anything you can. The point of this kit is to **keep that blast
+radius off your Mac.**
+
+Two tiers — pick per task:
+
+| | Where Claude runs | Use it for | Exposure |
+|---|---|---|---|
+| **Host** (Mac app / `claude`) | your macOS user account | trivial, trusted, low-risk edits & questions | **full** access to your account — only when you trust the prompt and aren't running untrusted code/deps |
+| **VM mode** *(default)* | inside the Colima Linux VM | real work: untrusted deps, builds, autonomous or `--dangerously-skip-permissions` runs | confined to the VM **+** the mounted `~/Projects` |
+
+**What VM mode protects:** credential theft (SSH keys, keychain, cloud/API tokens, browser
+cookies) and destructive actions (mass deletion, ransomware-style writes) **can't reach the host** —
+the VM is a separate kernel with no view of your home directory except the one folder you mount.
+
+**What it does *not* (yet) protect:** the `~/Projects` mount is **writable**, so a compromised VM
+can still tamper with your project files (mitigation: they're in git and pushed), and **outbound
+network is currently unrestricted** — an attacker could exfiltrate whatever the VM can read.
+Closing that path is the [Network firewall](#network-firewall-planned) work below.
+
+Set the VM up with **[`./vm-up.sh`](#run-everything-in-an-isolated-vm-default)**; full walkthrough
+and caveats in **[docs/isolation.md](docs/isolation.md)**.
 
 ---
 
@@ -48,10 +82,10 @@ exec zsh -l                      # (or just open a new tab/window)
 
 # 4. log in to Claude Code (first run only), then verify
 claude                           # complete the one-time login, then quit
-./doctor.sh                      # expect mostly green: CLI, linked config, skills, MCP, dev tooling
+./doctor.sh                      # expect mostly green: CLI, linked config, skills, MCP
 ```
 
-That's it. `setup.sh` will:
+That's it. `setup.sh` prepares the **host baseline**:
 
 1. **Preflight** — check macOS/brew/git/node, install `gh` `gitleaks` `uv` `jq`.
 2. **Claude Code** — install the CLI via the official native installer.
@@ -61,25 +95,31 @@ That's it. `setup.sh` will:
 6. **Global config** — link `CLAUDE.md`, `settings.json`, the secret-guard hook,
    and the workflow slash commands into `~/.claude` (your existing files are
    backed up first).
-7. **Dev tooling** — install the usage gauge (`claude-monitor`), Claude Squad (`cs`),
-   and clone the OTEL/Grafana stack; the status line (ccstatusline) and telemetry are
-   wired into `settings.json`. Start the dashboards anytime with **`./grafana-up.sh`**
-   (needs Docker running; stop: `./grafana-down.sh`). See [docs/tooling-setup.md](docs/tooling-setup.md).
+7. **Dev tooling (host) — OFF by default.** Monitoring (`claude-monitor`, the OTEL/Grafana
+   stack) and Claude Squad now run **inside the VM**, so the host stays lean. Want them on the
+   host too? `./setup.sh --with-extras`. The status line (ccstatusline) and telemetry are wired
+   into `settings.json` either way. See [docs/tooling-setup.md](docs/tooling-setup.md).
+
+**Then set up the VM** — the recommended runtime for real work (one time):
+```bash
+./vm-up.sh
+```
+See [Run everything in an isolated VM](#run-everything-in-an-isolated-vm-default) below.
 
 ### Options
 
 ```bash
-./setup.sh --copy        # copy config into ~/.claude instead of symlinking
-./setup.sh --no-mcp      # skip MCP registration
-./setup.sh --no-plugins  # skip the (optional) plugins info step
-./setup.sh --no-extras   # skip the monitoring/multi-project tooling
-./setup.sh --interactive # confirm before each step (default: non-interactive)
+./setup.sh --copy         # copy config into ~/.claude instead of symlinking
+./setup.sh --no-mcp       # skip MCP registration
+./setup.sh --no-plugins   # skip the (optional) plugins info step
+./setup.sh --with-extras  # ALSO install host monitoring/multi-project tooling (default: in the VM only)
+./setup.sh --interactive  # confirm before each step (default: non-interactive)
 ```
 
 By default config is **symlinked** from this repo into `~/.claude`, so
 `git pull` here keeps both your MacBooks in sync.
 
-## Run everything in an isolated VM (recommended)
+## Run everything in an isolated VM (default)
 
 For strong isolation, run Claude + tools + Docker inside an **always-on Colima Linux VM**.
 You edit on the host (`~/Projects` is mounted in); Claude, builds, tests and the Grafana
@@ -92,6 +132,64 @@ cc my-app                  # open VS Code on the host + a Claude session inside 
 `new-project.sh` auto-launches `cc` after scaffolding; monitoring (Grafana) runs in the same
 VM (no second VM). Inside the VM you can safely use `--dangerously-skip-permissions`.
 Full guide + caveats: **[docs/isolation.md](docs/isolation.md)**.
+
+### Authenticate the VM once (`CLAUDE_CODE_OAUTH_TOKEN`)
+
+Claude in the VM has no browser, so authenticate it with a long-lived token generated on the
+**host** (this needs a Claude Pro/Max/Team/Enterprise subscription):
+```bash
+claude setup-token        # on the HOST: opens a browser, then prints an sk-ant-oat01-… token (copy it)
+mkdir -p ~/.config/claude-code-dev-setup && umask 077
+pbpaste > ~/.config/claude-code-dev-setup/oauth-token    # paste the copied token here (host-only, chmod 600)
+```
+`cc` reads that file and injects the token into each VM session, so it **stays on the host and is
+never written into the VM image or under `~/Projects`** — it can't be committed. Rotate by re-running
+`claude setup-token`; revoke at the [Claude Console](https://console.anthropic.com).
+*(Simpler but less safe: `export CLAUDE_CODE_OAUTH_TOKEN=…` in the VM's `~/.profile` — that persists the
+secret inside the VM. Or just run `claude` once inside the VM and complete the interactive login.)*
+
+Now that everything runs in the VM, the **host** copies of the monitoring stack are redundant — see
+[docs/isolation.md → Trim the host](docs/isolation.md#trim-the-host-to-vm-only-optional).
+
+## Network firewall (planned)
+
+> **Status: not yet implemented — VM egress is open today.** The VM needs outbound internet to
+> install packages, so for now it can reach the whole internet. Host isolation already protects your
+> credentials and files; this section closes the remaining **exfiltration** path — a compromised dep
+> sending what it can read (chiefly the mounted `~/Projects`) off-box.
+
+**What a firewall can and can't do.** An egress firewall doesn't judge *intent* — it can't look at a
+request and decide it's malicious. It judges **destination**: it flips the VM from "can reach all of
+the internet" to "can reach only a handful of known hosts; everything else is dropped." That kills
+the common case — automated supply-chain malware that phones home to an attacker-controlled server —
+for almost no cost. It does **not** stop a determined attacker who abuses an *allowed* host (e.g.
+pushing data to their own GitHub repo): **a trusted destination is not a trusted recipient.** Treat
+it as a blast-radius reducer, not a guarantee.
+
+**Why packet-filtering alone isn't enough.** nftables filters on IP/port, but the hosts we must
+allow (Anthropic API, npm, PyPI, GitHub, …) sit behind shared, rotating CDN IP ranges — "allow
+`github.com`" would in practice allow a whole CDN. Reliable allow-listing **by name** needs a
+layer-7 chokepoint. So the planned design is layered:
+
+- **nftables, default-deny** — drop all direct outbound from the VM;
+- **a forced filtering proxy** (e.g. tinyproxy / Squid) as the only way out for HTTP/HTTPS — it
+  allows a small list of **hostnames** (via SNI / `CONNECT`), not IPs: `api.anthropic.com`, the
+  registries you use (npmjs, PyPI, Maven Central, crates.io …), `github.com` + your git remotes;
+- **DNS forced** to a resolver restricted to those names — closes the DNS-tunnel exfil channel;
+- **logging** of denied connections — a dependency suddenly dialing an unknown host is itself a
+  tripwire.
+
+It will ship as a step in [`scripts/vm-provision.sh`](scripts/vm-provision.sh) plus a small
+`vm-firewall.sh` to view / edit / reload the hostname allowlist, with the rules + allowlist
+version-controlled here so both Macs stay identical.
+
+Defense in depth does the rest: the VM holds **no host secrets**, the OAuth token is injected per
+session (never stored in the VM), and `~/Projects` — the only sensitive thing reachable — is already
+in git and pushed, so residual exfil value ≈ source code that's already on GitHub.
+
+<!-- TODO(firewall): once implemented, replace this stub with the actual nftables rules, the proxy
+     config + hostname allowlist file, "how to allow a new host", and the DNS setup. Until then,
+     VM egress is open. -->
 
 ## Start a new project the right way
 
@@ -172,7 +270,7 @@ Maven: point the local repo at a writable path — `mvn -Dmaven.repo.local=.m2 �
 | Path | What it is |
 |------|------------|
 | `setup.sh` / `doctor.sh` | installer (idempotent) / read-only health check |
-| `grafana-up.sh` / `grafana-down.sh` | start / stop the local Grafana monitoring dashboards |
+| `grafana-up.sh` / `grafana-down.sh` | start / stop the Grafana dashboards (monitoring runs in the VM by default; these target the host `--with-extras` clone) |
 | `new-project.sh` | scaffold a new project from `project-template/` (also `make new-project`) |
 | `sync-project.sh` | pull updated kit infra files into an existing project (also `make sync-project`) |
 | `vm-up.sh` | start + provision the always-on Colima VM — the isolated default env (`make vm-up`) |
@@ -193,7 +291,7 @@ Maven: point the local repo at a writable path — `mvn -Dmaven.repo.local=.m2 �
 
 ```bash
 git -C path/to/claude-code-dev-setup pull   # get the latest kit (config symlinks update automatically)
-./setup.sh                                  # idempotent re-run: refreshes skills, MCP, dev tools, config
+./setup.sh                                  # idempotent re-run: refreshes skills, MCP, global config
 # Claude Code self-updates in the background
 ```
 

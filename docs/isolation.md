@@ -20,8 +20,17 @@ It (idempotently):
   `claude-code-otel`;
 - links **`cc`** onto your PATH and installs a **LaunchAgent** so the VM **auto-starts at login**.
 
-First time only, log in to Claude **inside the VM**: `cc` then run `claude` once
-(or on the host `claude setup-token`, then `export CLAUDE_CODE_OAUTH_TOKEN=…` in the VM).
+First time only, **authenticate the VM**. Claude in the VM has no browser, so use a long-lived
+token generated on the host (needs a Claude Pro/Max/Team/Enterprise subscription):
+```bash
+claude setup-token                                       # on the HOST (browser) → copy the sk-ant-oat01-… token
+mkdir -p ~/.config/claude-code-dev-setup && umask 077
+pbpaste > ~/.config/claude-code-dev-setup/oauth-token    # paste the token here (host-only, chmod 600)
+```
+`cc` injects it into every VM session — the token never lands in the VM image or under `~/Projects`,
+so it can't be committed. Rotate by re-running `claude setup-token`; revoke at the Claude Console.
+(Simpler, less safe: `export CLAUDE_CODE_OAUTH_TOKEN=…` in the VM's `~/.profile`, or just run
+`claude` once inside the VM and finish the interactive login.)
 
 ## Daily workflow
 ```bash
@@ -49,11 +58,29 @@ collector in the VM automatically.
   native disk via the per-project `env` (`.uv-cache`, `npm_config_cache`, `GRADLE_USER_HOME`…
   — see the README recipes), not on the mounted source.
 - **The writable mount is a scoped hole:** the VM can write `~/Projects`. Keep secrets out of
-  the VM and rely on the firewall/host separation for everything else.
+  the VM and rely on host separation for everything else.
+- **Outbound network is currently unrestricted** — the VM can reach the whole internet, so a
+  compromised dep could exfiltrate what it reads. An egress allowlist is planned; see the
+  README's *Network firewall* section. Until then, treat VM egress as open.
 - **Resources:** the VM holds 8–12 GB while running. Stop it with `colima stop` if needed.
 - **Two environments:** the VM has its own `~/.claude`. The kit's config is symlinked from the
   **mounted** repo, so editing the kit on the host updates the VM too; re-run
   `bash <kit>/scripts/20-skills.sh` in the VM to refresh skills.
+
+## Trim the host to VM-only (optional)
+Once everything runs in the VM, the **host** copies of the monitoring stack are redundant — and
+because the `docker` CLI now talks to the Colima daemon, starting them from the host competes with
+the VM's stack for ports 3000/4317. **Keep `claude` on the host** (you need it for `claude
+setup-token`); drop the rest:
+```bash
+./grafana-down.sh 2>/dev/null || true     # stop any host-launched dashboards
+rm -rf ~/Tools/claude-code-otel           # host OTEL clone — the VM has its own at ~/claude-code-otel
+uv tool uninstall claude-monitor 2>/dev/null || true   # optional — monitoring lives in the VM now
+brew uninstall claude-squad 2>/dev/null || true        # optional — removes the 'cs' alias too
+```
+A later `./setup.sh` re-run would reinstall these; pass `--no-extras` to keep the host lean. The
+host's `~/.claude` config (skills, MCP, settings) is harmless to keep — it's just unused while you
+work in the VM.
 
 ## Isolation spectrum
 | Level | Isolation | Notes |

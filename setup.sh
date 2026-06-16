@@ -3,14 +3,18 @@
 # Idempotent: safe to re-run. Each step lives in scripts/NN-*.sh.
 #
 # Usage:
-#   ./setup.sh                # full setup, NON-interactive (symlinks global config)
+#   ./setup.sh                # host baseline, NON-interactive (CLI + skills + MCP + global config)
 #   ./setup.sh --copy         # copy global config instead of symlinking
 #   ./setup.sh --no-mcp       # skip MCP server registration
 #   ./setup.sh --no-plugins   # skip the plugins info step
-#   ./setup.sh --no-extras    # skip the monitoring/multi-project tooling step
+#   ./setup.sh --with-extras  # ALSO install HOST monitoring/multi-project tooling (default: off)
 #   ./setup.sh --interactive  # confirm before each step (default: non-interactive)
 #   CONTEXT7_API_KEY=xxx ./setup.sh   # use a Context7 key (optional; else keyless)
 #   ./setup.sh --help
+#
+# The isolated VM (./vm-up.sh) is the recommended runtime; this prepares the host baseline.
+# Monitoring & multi-project tooling run INSIDE the VM, so host extras are OFF by default
+# (--with-extras adds them to the host too).
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/lib.sh
@@ -18,7 +22,7 @@ source "$HERE/scripts/lib.sh"
 
 WITH_MCP=1
 WITH_PLUGINS=1
-WITH_EXTRAS=1
+WITH_EXTRAS=0   # host monitoring/multi-project tooling: OFF by default (it runs inside the VM)
 export COPY_MODE="${COPY_MODE:-0}"
 export AUTO_YES="${AUTO_YES:-1}"   # non-interactive by default; --interactive to prompt
 
@@ -29,7 +33,8 @@ while [[ $# -gt 0 ]]; do
     --copy)       export COPY_MODE=1 ;;
     --no-mcp)     WITH_MCP=0 ;;
     --no-plugins) WITH_PLUGINS=0 ;;
-    --no-extras)  WITH_EXTRAS=0 ;;
+    --with-extras) WITH_EXTRAS=1 ;;
+    --no-extras)   WITH_EXTRAS=0 ;;   # default; accepted for explicitness/back-compat
     --yes|-y)         export AUTO_YES=1 ;;
     --interactive|-i) export AUTO_YES=0 ;;
     -h|--help)    usage ;;
@@ -67,12 +72,12 @@ cat <<'NEXT'
     1. Open a NEW terminal (or run: exec zsh -l) so `claude` is on your PATH.
     2. Verify everything:           ./doctor.sh
     3. Read the guide:              docs/claude-code-setup.md
-    4. Start a project the right way:
-         ./new-project.sh my-app
-         cd ../my-app && claude
+    4. Set up the isolated VM (recommended — the default runtime for real work):
+         ./vm-up.sh                 # start + provision the always-on Colima VM
+         cc my-app                  # VS Code on the host + Claude inside the VM
+       Monitoring (Grafana, claude-monitor) lives INSIDE the VM. See docs/isolation.md.
+    5. Quick / trusted task on the host instead? (the Mac app is fine for that)
+         ./new-project.sh my-app --no-launch && cd ../my-app && claude
        then run /brainstorm to qualify the idea before any code.
-    5. Monitoring is installed — keep a usage gauge handy:
-         claude-monitor --plan max20 --view realtime
-       and for dashboards:  ./grafana-up.sh      (stop with ./grafana-down.sh)
 
 NEXT

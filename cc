@@ -10,9 +10,20 @@ has(){ command -v "$1" >/dev/null 2>&1; }
 has colima || { echo "Colima not installed — run ./vm-up.sh first." >&2; exit 1; }
 colima status >/dev/null 2>&1 || { echo "Colima VM not running — start it with ./vm-up.sh (or: colima start)." >&2; exit 1; }
 
+# Auth: inject a long-lived OAuth token into the VM session if you've set one up.
+# Generate it on the HOST (which has a browser) with `claude setup-token`, then save it to
+# the file below. It's read from the host only and passed per-session — never written into
+# the VM image or under ~/Projects, so it can't be committed. Absent → log in inside the VM.
+TOKEN_FILE="${CC_TOKEN_FILE:-$HOME/.config/claude-code-dev-setup/oauth-token}"
+tok="${CLAUDE_CODE_OAUTH_TOKEN:-}"
+if [[ -z "$tok" && -r "$TOKEN_FILE" ]]; then tok="$(tr -d '[:space:]' < "$TOKEN_FILE")"; fi
+
 # No arg → just drop into the VM.
 if [[ $# -eq 0 ]]; then
-  exec colima ssh -- bash -lc "cd '$PROJECTS' 2>/dev/null || true; exec bash -l"
+  ssh_cmd=(colima ssh --)
+  if [[ -n "$tok" ]]; then ssh_cmd+=(env "CLAUDE_CODE_OAUTH_TOKEN=$tok"); fi
+  ssh_cmd+=(bash -lc "cd '$PROJECTS' 2>/dev/null || true; exec bash -l")
+  exec "${ssh_cmd[@]}"
 fi
 
 # Resolve <project> to an absolute host path under ~/Projects (mounted at the same path in the VM).
@@ -33,4 +44,7 @@ fi
 
 # Enter the VM at the project and launch Claude there.
 echo "→ entering VM at $abs  (Claude Code runs inside the VM; edit on the host)"
-exec colima ssh -- bash -lc "cd '$abs' && exec claude"
+ssh_cmd=(colima ssh --)
+if [[ -n "$tok" ]]; then ssh_cmd+=(env "CLAUDE_CODE_OAUTH_TOKEN=$tok"); fi
+ssh_cmd+=(bash -lc "cd '$abs' && exec claude")
+exec "${ssh_cmd[@]}"
