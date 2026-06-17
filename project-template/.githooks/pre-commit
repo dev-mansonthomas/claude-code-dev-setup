@@ -7,7 +7,7 @@
 # whoever commits (you, Claude, a teammate). It auto-loads this repo's .gitleaks.toml,
 # so allowlisted paths (.env.example, docs) don't trigger false positives.
 #
-# Enabled via:  git config core.hooksPath .githooks   (new-project.sh does this for you).
+# Enabled via:  git config core.hooksPath .githooks   (05-new-project.sh does this for you).
 # Fail-open if gitleaks isn't installed. Bypass (discouraged): git commit --no-verify.
 set -uo pipefail
 

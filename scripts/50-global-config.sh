@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 50-global-config.sh — install the global Claude Code config into ~/.claude.
 # Default mode = symlink (so `git pull` in this repo updates both your MacBooks).
-# Pass COPY_MODE=1 (setup.sh --copy) for plain copies instead.
+# Pass COPY_MODE=1 (01-setup.sh --copy) for plain copies instead.
 # Any pre-existing *real* file is backed up first; our own symlinks are replaced.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

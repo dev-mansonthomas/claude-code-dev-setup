@@ -11,28 +11,28 @@ help:
 	@echo "Examples:"
 	@echo "  make setup                 # install & configure everything"
 	@echo "  make doctor                # read-only health check"
-	@echo "  ./new-project.sh app       # scaffold ../app  (or: make new-project NAME=app)"
+	@echo "  ./05-new-project.sh app       # scaffold ../app  (or: make new-project NAME=app)"
 
 ## setup: install Claude Code, skills, MCP, and global config
 .PHONY: setup
 setup:
-	@./setup.sh
+	@./01-setup.sh
 
 ## doctor: print what's installed/configured (read-only)
 .PHONY: doctor
 doctor:
-	@./doctor.sh
+	@./02-doctor.sh
 
 ## lint: shellcheck all shell scripts
 .PHONY: lint
 lint:
-	@shellcheck -x --source-path=SCRIPTDIR setup.sh doctor.sh grafana-up.sh grafana-down.sh new-project.sh sync-project.sh vm-up.sh cc scripts/*.sh claude-config/hooks/*.sh project-template/.githooks/pre-commit && echo "shellcheck: clean"
+	@shellcheck -x --source-path=SCRIPTDIR 01-setup.sh 02-doctor.sh 03-vm-up.sh 04-vm-auth.sh 05-new-project.sh sync-project.sh grafana-up.sh grafana-down.sh ccvm scripts/*.sh claude-config/hooks/*.sh project-template/.githooks/pre-commit && echo "shellcheck: clean"
 
 ## new-project: scaffold a new project from project-template/ (NAME=... [DEST=...])
 .PHONY: new-project
 new-project:
-	@test -n "$(NAME)" || { echo "Usage: make new-project NAME=my-app [DEST=path]  (or just: ./new-project.sh my-app)"; exit 1; }
-	@./new-project.sh "$(NAME)" "$(DEST)"
+	@test -n "$(NAME)" || { echo "Usage: make new-project NAME=my-app [DEST=path]  (or just: ./05-new-project.sh my-app)"; exit 1; }
+	@./05-new-project.sh "$(NAME)" "$(DEST)"
 
 ## sync-project: pull updated kit infra files into an existing project (DIR=... [APPLY=1])
 .PHONY: sync-project
@@ -43,4 +43,9 @@ sync-project:
 ## vm-up: start + provision the always-on Colima VM (the isolated default env)
 .PHONY: vm-up
 vm-up:
-	@./vm-up.sh
+	@./03-vm-up.sh
+
+## vm-auth: authenticate the VM (claude setup-token -> host-only token file)
+.PHONY: vm-auth
+vm-auth:
+	@./04-vm-auth.sh

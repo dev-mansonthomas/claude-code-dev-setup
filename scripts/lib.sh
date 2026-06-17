@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # lib.sh — shared helpers for the claude-code-dev-setup scripts.
-# Sourced by setup.sh, doctor.sh and every scripts/NN-*.sh.
+# Sourced by 01-setup.sh, 02-doctor.sh and every scripts/NN-*.sh.
 # Not meant to be executed directly.
 
 # ---------------------------------------------------------------------------
@@ -42,7 +42,7 @@ has() { command -v "$1" >/dev/null 2>&1; }
 
 # ---------------------------------------------------------------------------
 # Confirmation prompt. Returns 0 (yes) / 1 (no).
-# Honours AUTO_YES=1 (set by `setup.sh --yes`) to answer yes non-interactively.
+# Honours AUTO_YES=1 (set by `01-setup.sh --yes`) to answer yes non-interactively.
 # Defaults to "yes" when stdin is not a TTY (CI) unless overridden.
 # ---------------------------------------------------------------------------
 confirm() {

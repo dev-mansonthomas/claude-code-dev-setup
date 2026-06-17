@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # grafana-up.sh — start the local Claude Code monitoring dashboards (Grafana).
-# Wraps the claude-code-otel stack (installed by ./setup.sh). Telemetry is already
+# Wraps the claude-code-otel stack (installed by ./01-setup.sh). Telemetry is already
 # enabled in settings.json, so once this is up, new Claude Code sessions stream
 # metrics to http://localhost:3000.
 set -euo pipefail
@@ -15,7 +15,7 @@ step "Claude Code monitoring — starting Grafana"
 
 if [[ ! -d "$OTEL_DIR" ]]; then
   err "Monitoring stack not found at $OTEL_DIR"
-  log "Install it first:  ./setup.sh    (or: bash scripts/60-dev-tools.sh)"
+  log "Install it first:  ./01-setup.sh    (or: bash scripts/60-dev-tools.sh)"
   exit 1
 fi
 has docker || die "Docker not found. Install Docker Desktop: brew install --cask docker"

@@ -13,7 +13,7 @@ source "$HERE/lib.sh"
 step "MCP servers (user scope)"
 
 if ! CLAUDE="$(claude_bin)"; then
-  warn "claude not found on PATH. Open a new terminal after step 10, then re-run: ./setup.sh"
+  warn "claude not found on PATH. Open a new terminal after step 10, then re-run: ./01-setup.sh"
   exit 0
 fi
 

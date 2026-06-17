@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# vm-up.sh — bring up the always-on Colima Linux VM that is the DEFAULT isolated dev
+# 03-vm-up.sh — bring up the always-on Colima Linux VM that is the DEFAULT isolated dev
 # environment. It mounts ~/Projects (writable, virtiofs), runs Docker, and provisions
 # Claude Code + the kit + the Grafana monitoring stack INSIDE the VM. Idempotent.
-# Run once; then use `cc <project>` to work inside it. (Edit on the host, run in the VM.)
+# Run once; then use `ccvm <project>` to work inside it. (Edit on the host, run in the VM.)
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/lib.sh
@@ -40,9 +40,13 @@ if docker info >/dev/null 2>&1; then ok "Docker (in VM) reachable."; else warn "
 info "Provisioning the VM (Claude Code, tools, skills, config, monitoring)..."
 colima ssh -- bash "$HERE/scripts/vm-provision.sh" "$HERE" || warn "Provisioning reported issues — review the output above."
 
-# `cc` on PATH for the default workflow.
+# `ccvm` on PATH for the default workflow.
 if [[ -w /opt/homebrew/bin ]]; then
-  ln -sfn "$HERE/cc" /opt/homebrew/bin/cc && ok "linked 'cc' -> $HERE/cc"
+  # Remove the legacy 'cc' launcher symlink if present — it collided with the C compiler.
+  if [[ -L /opt/homebrew/bin/cc && "$(readlink /opt/homebrew/bin/cc)" == "$HERE/"* ]]; then
+    rm -f /opt/homebrew/bin/cc && ok "removed legacy 'cc' symlink (it shadowed the system C compiler)"
+  fi
+  ln -sfn "$HERE/ccvm" /opt/homebrew/bin/ccvm && ok "linked 'ccvm' -> $HERE/ccvm"
 fi
 
 # Always-on: auto-start Colima at login via a LaunchAgent (best-effort).
@@ -68,12 +72,12 @@ ok "VM ready."
 cat <<EOF
 
   Default workflow — everything runs IN the VM:
-    cc <project>     # opens VS Code on the host + a Claude session inside the VM
-    cc               # just shell into the VM (at ~/Projects)
-    ./new-project.sh <name>   # scaffolds, then auto-launches cc (VS Code + VM)
+    ccvm <project>     # opens VS Code on the host + a Claude session inside the VM
+    ccvm               # just shell into the VM (at ~/Projects)
+    ./05-new-project.sh <name>   # scaffolds, then auto-launches ccvm (VS Code + VM)
 
-  First time only: inside the VM run 'claude' once to log in
-                   (or on the host: claude setup-token, then export CLAUDE_CODE_OAUTH_TOKEN in the VM).
-  Monitoring (Grafana) lives in the VM:  cc  →  cd ~/claude-code-otel && make up
+  First time only: authenticate the VM from the host:  ./04-vm-auth.sh
+                   (runs 'claude setup-token' and stores the token host-side for ccvm to inject).
+  Monitoring (Grafana) lives in the VM:  ccvm  →  cd ~/claude-code-otel && make up
                    → open http://localhost:3000 on your Mac (admin/admin; the port is forwarded).
 EOF

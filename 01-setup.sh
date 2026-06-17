@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# setup.sh — one command to bring a Mac to "professional Claude Code" parity.
+# 01-setup.sh — one command to bring a Mac to "professional Claude Code" parity.
 # Idempotent: safe to re-run. Each step lives in scripts/NN-*.sh.
 #
 # Usage:
-#   ./setup.sh                # host baseline, NON-interactive (CLI + skills + MCP + global config)
-#   ./setup.sh --copy         # copy global config instead of symlinking
-#   ./setup.sh --no-mcp       # skip MCP server registration
-#   ./setup.sh --no-plugins   # skip the plugins info step
-#   ./setup.sh --with-extras  # ALSO install HOST monitoring/multi-project tooling (default: off)
-#   ./setup.sh --interactive  # confirm before each step (default: non-interactive)
-#   CONTEXT7_API_KEY=xxx ./setup.sh   # use a Context7 key (optional; else keyless)
-#   ./setup.sh --help
+#   ./01-setup.sh                # host baseline, NON-interactive (CLI + skills + MCP + global config)
+#   ./01-setup.sh --copy         # copy global config instead of symlinking
+#   ./01-setup.sh --no-mcp       # skip MCP server registration
+#   ./01-setup.sh --no-plugins   # skip the plugins info step
+#   ./01-setup.sh --with-extras  # ALSO install HOST monitoring/multi-project tooling (default: off)
+#   ./01-setup.sh --interactive  # confirm before each step (default: non-interactive)
+#   CONTEXT7_API_KEY=xxx ./01-setup.sh   # use a Context7 key (optional; else keyless)
+#   ./01-setup.sh --help
 #
-# The isolated VM (./vm-up.sh) is the recommended runtime; this prepares the host baseline.
+# The isolated VM (./03-vm-up.sh) is the recommended runtime; this prepares the host baseline.
 # Monitoring & multi-project tooling run INSIDE the VM, so host extras are OFF by default
 # (--with-extras adds them to the host too).
 set -euo pipefail
@@ -70,14 +70,14 @@ cat <<'NEXT'
 
   Next steps:
     1. Open a NEW terminal (or run: exec zsh -l) so `claude` is on your PATH.
-    2. Verify everything:           ./doctor.sh
+    2. Verify everything:           ./02-doctor.sh
     3. Read the guide:              docs/claude-code-setup.md
     4. Set up the isolated VM (recommended — the default runtime for real work):
-         ./vm-up.sh                 # start + provision the always-on Colima VM
-         cc my-app                  # VS Code on the host + Claude inside the VM
+         ./03-vm-up.sh                 # start + provision the always-on Colima VM
+         ccvm my-app                  # VS Code on the host + Claude inside the VM
        Monitoring (Grafana, claude-monitor) lives INSIDE the VM. See docs/isolation.md.
     5. Quick / trusted task on the host instead? (the Mac app is fine for that)
-         ./new-project.sh my-app --no-launch && cd ../my-app && claude
+         ./05-new-project.sh my-app --no-launch && cd ../my-app && claude
        then run /brainstorm to qualify the idea before any code.
 
 NEXT
