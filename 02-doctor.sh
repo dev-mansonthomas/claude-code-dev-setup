@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# doctor.sh — read-only health check. Prints what's installed/configured.
+# 02-doctor.sh — read-only health check. Prints what's installed/configured.
 # Changes nothing. Run it any time to see the state of your Claude Code setup.
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -87,5 +87,5 @@ fi
 step "Summary"
 printf '  %s%d passed%s, %s%d warnings%s, %s%d failed%s\n' \
   "$C_GREEN" "$pass" "$C_RESET" "$C_YELLOW" "$warns" "$C_RESET" "$C_RED" "$fail" "$C_RESET"
-if [[ "$fail" -eq 0 ]]; then ok "Looks good."; else warn "Run ./setup.sh to fix the failures above."; fi
+if [[ "$fail" -eq 0 ]]; then ok "Looks good."; else warn "Run ./01-setup.sh to fix the failures above."; fi
 exit 0

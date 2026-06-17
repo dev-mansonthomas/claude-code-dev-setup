@@ -80,6 +80,6 @@ for entry in "${SKILL_SOURCES[@]}"; do
 done
 
 ok "Skills done: $linked newly linked, $skipped source(s) already present."
-info "List: ls ~/.claude/skills   |   verify: ./doctor.sh"
+info "List: ls ~/.claude/skills   |   verify: ./02-doctor.sh"
 [[ -d "$SRC_DIR" ]] && info "Sources cloned in $SRC_DIR (update later: git -C $SRC_DIR/<repo> pull)."
 exit 0

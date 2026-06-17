@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 60-dev-tools.sh — install the monitoring & multi-project tooling (standard step).
-# Install-only and idempotent. Skipped when setup.sh is run with --no-extras.
+# Install-only and idempotent. Skipped when 01-setup.sh is run with --no-extras.
 #   • claude-monitor (live usage/limit gauge) -> uv tool (pipx fallback)
 #   • Claude Squad (cs)                        -> Homebrew + short 'cs' symlink
 #   • claude-code-otel (Grafana stack)         -> git clone only (start later: make up)

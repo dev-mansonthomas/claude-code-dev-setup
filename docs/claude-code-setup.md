@@ -16,15 +16,15 @@
 
 ```bash
 git clone https://github.com/dev-mansonthomas/claude-code-dev-setup.git
-cd claude-code-dev-setup && ./setup.sh
+cd claude-code-dev-setup && ./01-setup.sh
 # open a new terminal, then:
-./doctor.sh
+./02-doctor.sh
 ```
 
 Then, for every new app:
 
 ```bash
-./new-project.sh my-app && cd ../my-app && claude
+./05-new-project.sh my-app && cd ../my-app && claude
 # inside Claude:  /brainstorm  →  /spec  →  /plan-feature  →  build  →  /ship
 ```
 
@@ -58,7 +58,7 @@ the chat.
 ## 2. One-time setup (zero assumed knowledge)
 
 ### 2.1 Install
-The `setup.sh` in this repo does it all and is safe to re-run. It:
+The `01-setup.sh` in this repo does it all and is safe to re-run. It:
 
 1. **Preflight** — verifies Homebrew, git, Node, Python; installs `gh`,
    `gitleaks`, `uv`, `jq`.
@@ -70,9 +70,9 @@ The `setup.sh` in this repo does it all and is safe to re-run. It:
    hook, and the slash commands into `~/.claude` (backing up anything existing).
 
 ```bash
-./setup.sh            # full
-./setup.sh --copy     # copy instead of symlink
-./setup.sh --no-mcp   # skip MCP
+./01-setup.sh            # full
+./01-setup.sh --copy     # copy instead of symlink
+./01-setup.sh --no-mcp   # skip MCP
 ```
 
 ### 2.2 First launch & login
@@ -85,11 +85,11 @@ account). Then:
 - `/status` — see account, model, and config.
 - `/model` — pick the model (default here is **Opus**; toggle Fast mode with
   `/fast`).
-- `/doctor` (Claude's own) and our `./doctor.sh` — confirm everything's wired.
+- `/doctor` (Claude's own) and our `./02-doctor.sh` — confirm everything's wired.
 
 ### 2.3 Verify
 ```bash
-./doctor.sh
+./02-doctor.sh
 ```
 Green across the board means: CLI installed, skills present, MCP servers
 configured, global `CLAUDE.md` + `settings.json` + hook in place.
@@ -164,7 +164,7 @@ firing, its description is the lever (`skill-creator` optimizes it). The ones yo
 Manage them:
 ```bash
 ls ~/.claude/skills          # what's installed (the kit symlinks them here)
-./setup.sh                   # idempotent re-run: (re)installs / refreshes skills
+./01-setup.sh                   # idempotent re-run: (re)installs / refreshes skills
 git -C ~/.claude/skill-sources/<repo> pull   # update one source repo
 ```
 
@@ -188,7 +188,7 @@ claude mcp add --scope project redis -- \
 This writes `.mcp.json` in the project. Keep the password in an env var; commit
 `.mcp.json` only if it contains no secret.
 
-**Shortcut:** `./new-project.sh <name> --redis` (or answering the prompt it shows)
+**Shortcut:** `./05-new-project.sh <name> --redis` (or answering the prompt it shows)
 writes this `.mcp.json` for you when scaffolding — Redis MCP is offered per-project,
 never installed globally, since it points at a specific DB.
 
@@ -240,7 +240,7 @@ Defense in depth — local feedback **plus** server-side enforcement:
 - **Per-project git pre-commit hook** (gitleaks on the staged snapshot) — the robust
   local gate: it scans *exactly* what's committed (no stale-index / `add && commit`
   quirk), applies the repo's `.gitleaks.toml` allowlist (no false positives), and runs
-  for anyone who commits. `new-project.sh` wires it; teammates run
+  for anyone who commits. `05-new-project.sh` wires it; teammates run
   `git config core.hooksPath .githooks` once after cloning.
 - **Global secret-guard hook** (`~/.claude`) — a zero-setup backstop in any folder.
 - The global `CLAUDE.md` requires: env vars for all secrets, `.gitignore` covering
@@ -303,7 +303,7 @@ security → performance → docs → ship. Do it once and the workflow is yours
 
 ### Step 0 — scaffold & open
 ```bash
-./new-project.sh shortlink
+./05-new-project.sh shortlink
 cd ../shortlink
 claude
 ```
@@ -423,6 +423,6 @@ claude -p "…"          # headless one-shot (scripts/CI)
 ---
 
 ### Reference
-- This kit: `claude-code-dev-setup` (run `./doctor.sh` anytime).
+- This kit: `claude-code-dev-setup` (run `./02-doctor.sh` anytime).
 - Redis skills: `redis/agent-skills`, `fcenedes/redis_sa_skills`.
 - Claude Code docs: <https://code.claude.com/docs>.

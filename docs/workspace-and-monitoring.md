@@ -8,7 +8,7 @@ How to **watch token/limit usage**, **monitor context**, **observe the agent**, 
 > limits) in the middle of a sprint. The tools below are your *fuel gauge* and *flight
 > recorder*, not a billing report.
 
-> **Already installed:** `./setup.sh` installs and wires all of this automatically
+> **Already installed:** `./01-setup.sh` installs and wires all of this automatically
 > (see [tooling-setup.md](tooling-setup.md)). The sections below focus on *using* each
 > piece day-to-day; the install commands are kept inline for reference.
 
@@ -108,7 +108,7 @@ local collector and you get real dashboards.
 **`claude-code-otel`** ([ColeMurray/claude-code-otel](https://github.com/ColeMurray/claude-code-otel))
 bundles a turnkey stack (OTEL Collector + Prometheus + Loki + Grafana with ready dashboards).
 
-**`./setup.sh` already cloned this stack and wired telemetry into `settings.json`.** Start
+**`./01-setup.sh` already cloned this stack and wired telemetry into `settings.json`.** Start
 and stop the dashboards with the root-level scripts:
 ```bash
 ./grafana-up.sh      # start Grafana, then open http://localhost:3000 (admin/admin)
@@ -257,6 +257,6 @@ landscape screen to drive.
 ---
 
 ### See also
-- [tooling-setup.md](tooling-setup.md) — what `setup.sh` installs & wires (ccstatusline, OTEL) + finishing steps.
+- [tooling-setup.md](tooling-setup.md) — what `01-setup.sh` installs & wires (ccstatusline, OTEL) + finishing steps.
 - [claude-code-setup.md](claude-code-setup.md) — the full onboarding guide & toolbox.
 - [cheatsheet.md](cheatsheet.md) — one-page daily reference.

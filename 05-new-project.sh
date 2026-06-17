@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# new-project.sh — scaffold a new project from project-template/.
+# 05-new-project.sh — scaffold a new project from project-template/.
 #
-# Usage: ./new-project.sh <name> [dest] [--redis | --no-mcp] [--no-launch]
+# Usage: ./05-new-project.sh <name> [dest] [--redis | --no-mcp] [--no-launch]
 #   <name>      project name (letters, digits, . _ -); fills {{PROJECT_NAME}}
 #   [dest]      target directory (default: ../<name>)
 #   --redis     add the Redis MCP to this project (.mcp.json) without asking
 #   --no-mcp    don't add any project MCP (and don't prompt)
-#   --no-launch don't hand off to `cc` (VS Code + VM) at the end — just scaffold
+#   --no-launch don't hand off to `ccvm` (VS Code + VM) at the end — just scaffold
 #   (interactive runs without a flag are asked about the Redis MCP; default No)
 #   REDIS_URL=…  override the Redis connection string (default redis://127.0.0.1:6379/0)
 #
@@ -19,14 +19,14 @@ source "$HERE/scripts/lib.sh"
 
 # --- parse args: flags + positional <name> [dest] --------------------------
 REDIS_MCP=""           # "" = ask (if interactive), "yes" / "no" = decided
-LAUNCH=1               # after scaffolding, hand off to `cc` (VS Code on host + Claude in the VM)
+LAUNCH=1               # after scaffolding, hand off to `ccvm` (VS Code on host + Claude in the VM)
 positional=()
 for arg in "$@"; do
   case "$arg" in
     --redis)             REDIS_MCP=yes ;;
     --no-mcp|--no-redis) REDIS_MCP=no ;;
     --no-launch)         LAUNCH=0 ;;
-    -h|--help)           log "Usage: ./new-project.sh <name> [dest] [--redis|--no-mcp] [--no-launch]"; exit 0 ;;
+    -h|--help)           log "Usage: ./05-new-project.sh <name> [dest] [--redis|--no-mcp] [--no-launch]"; exit 0 ;;
     -*)                  die "Unknown option: $arg" ;;
     *)                   positional+=("$arg") ;;
   esac
@@ -35,7 +35,7 @@ NAME="${positional[0]:-}"
 DEST="${positional[1]:-}"
 
 if [[ -z "$NAME" ]]; then
-  err "Usage: ./new-project.sh <name> [dest] [--redis|--no-mcp]"
+  err "Usage: ./05-new-project.sh <name> [dest] [--redis|--no-mcp]"
   exit 1
 fi
 if [[ ! "$NAME" =~ ^[A-Za-z0-9._-]+$ ]]; then
@@ -101,18 +101,18 @@ ok "Created $dest"
 
 # Hand off to the isolated VM workflow: open VS Code on the host + a Claude session in the VM.
 abs="$(cd "$dest" && pwd)"
-if [[ "$LAUNCH" == 1 && -t 1 && -x "$HERE/cc" ]]; then
+if [[ "$LAUNCH" == 1 && -t 1 && -x "$HERE/ccvm" ]]; then
   case "$abs" in
     "$HOME/Projects"|"$HOME/Projects"/*)
-      log ""; log "  → launching cc (VS Code on the host + Claude inside the VM)…"
-      exec "$HERE/cc" "$abs" ;;
+      log ""; log "  → launching ccvm (VS Code on the host + Claude inside the VM)…"
+      exec "$HERE/ccvm" "$abs" ;;
     *)
-      warn "Project is outside ~/Projects → not mounted in the VM; skipping cc."
-      log "  Move it under ~/Projects, then: cc $NAME" ;;
+      warn "Project is outside ~/Projects → not mounted in the VM; skipping ccvm."
+      log "  Move it under ~/Projects, then: ccvm $NAME" ;;
   esac
 else
   log ""
-  log "  Next: cc $NAME     (opens VS Code on the host + Claude inside the VM)"
-  log "        no VM yet? run ./vm-up.sh once. Prefer local? cd $dest && claude"
+  log "  Next: ccvm $NAME     (opens VS Code on the host + Claude inside the VM)"
+  log "        no VM yet? run ./03-vm-up.sh once. Prefer local? cd $dest && claude"
 fi
 exit 0

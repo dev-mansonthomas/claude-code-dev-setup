@@ -14,7 +14,7 @@ claude            # start in current repo
 claude -c         # continue last session
 claude --resume   # pick a past session
 claude -p "…"     # headless (scripts/CI)
-./new-project.sh app        # scaffold ../app  (or: make new-project NAME=app)
+./05-new-project.sh app        # scaffold ../app  (or: make new-project NAME=app)
 ```
 
 ## In-session essentials
@@ -51,8 +51,8 @@ claude -p "…"     # headless (scripts/CI)
 ## Skills upkeep
 ```bash
 ls ~/.claude/skills          # installed skills
-./setup.sh                   # idempotent: refresh skills + config
-./doctor.sh                  # full health check
+./01-setup.sh                   # idempotent: refresh skills + config
+./02-doctor.sh                  # full health check
 ```
 
 ## Monitoring & parallel

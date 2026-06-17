@@ -1,11 +1,11 @@
-# Monitoring & multi-project tooling (installed by `setup.sh`)
+# Monitoring & multi-project tooling (installed by `01-setup.sh`)
 
-This is **part of the standard install** — `./setup.sh` installs and wires everything
+This is **part of the standard install** — `./01-setup.sh` installs and wires everything
 below automatically. This page is reference (copy it into your Mac OS setup guide).
 
 ## What the standard install does
 
-The **dev-tools** step (`scripts/60-dev-tools.sh`, run by `setup.sh`) installs:
+The **dev-tools** step (`scripts/60-dev-tools.sh`, run by `01-setup.sh`) installs:
 
 | Tool | What it's for | How it's installed |
 |------|---------------|--------------------|
@@ -19,7 +19,7 @@ And `settings.json` (installed by step 50) wires automatically:
 - **OpenTelemetry** — exports metrics/logs to a **local** collector for the claude-code-otel
   Grafana dashboards.
 
-> Don't want the tooling? `./setup.sh --no-extras` skips this step (and you can drop the
+> Don't want the tooling? `./01-setup.sh --no-extras` skips this step (and you can drop the
 > `statusLine`/`env` blocks from `claude-config/settings.json`).
 
 ## The one manual step: start the dashboards
@@ -60,7 +60,7 @@ cs                                            # Claude Squad: create/switch many
 ## Verify
 
 ```bash
-./doctor.sh        # the "Dev tooling" section shows: claude-monitor, cs, otel clone, status line, OTEL
+./02-doctor.sh        # the "Dev tooling" section shows: claude-monitor, cs, otel clone, status line, OTEL
 ```
 
 See **[workspace-and-monitoring.md](workspace-and-monitoring.md)** for how to use each tool in

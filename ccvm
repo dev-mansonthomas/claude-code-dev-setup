@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# cc — work inside the always-on Colima VM (the default isolated environment).
-#   cc <project>   open VS Code on the host project + a Claude session INSIDE the VM
-#   cc             shell into the VM (at ~/Projects)
+# ccvm — work inside the always-on Colima VM (the default isolated environment).
+#   ccvm <project>   open VS Code on the host project + a Claude session INSIDE the VM
+#   ccvm             shell into the VM (at ~/Projects)
 # You edit on the host (files are mounted into the VM); Claude + Docker + tests run in the VM.
 set -euo pipefail
 PROJECTS="$HOME/Projects"
 has(){ command -v "$1" >/dev/null 2>&1; }
 
-has colima || { echo "Colima not installed — run ./vm-up.sh first." >&2; exit 1; }
-colima status >/dev/null 2>&1 || { echo "Colima VM not running — start it with ./vm-up.sh (or: colima start)." >&2; exit 1; }
+has colima || { echo "Colima not installed — run ./03-vm-up.sh first." >&2; exit 1; }
+colima status >/dev/null 2>&1 || { echo "Colima VM not running — start it with ./03-vm-up.sh (or: colima start)." >&2; exit 1; }
 
 # Auth: inject a long-lived OAuth token into the VM session if you've set one up.
 # Generate it on the HOST (which has a browser) with `claude setup-token`, then save it to

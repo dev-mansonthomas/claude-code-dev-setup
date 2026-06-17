@@ -9,7 +9,7 @@ rest of macOS).
 
 ## One-time setup
 ```bash
-./vm-up.sh            # or: make vm-up
+./03-vm-up.sh            # or: make vm-up
 ```
 It (idempotently):
 - installs `colima` + `docker` (Homebrew) if missing;
@@ -18,35 +18,47 @@ It (idempotently):
 - **provisions the VM** (`scripts/vm-provision.sh`): Claude Code, git/jq/gitleaks/uv, the
   kit's skills + global config (reused from the mounted kit), `claude-monitor`, and clones
   `claude-code-otel`;
-- links **`cc`** onto your PATH and installs a **LaunchAgent** so the VM **auto-starts at login**.
+- links **`ccvm`** onto your PATH and installs a **LaunchAgent** so the VM **auto-starts at login**.
 
-First time only, **authenticate the VM**. Claude in the VM has no browser, so use a long-lived
+First time only, **authenticate the VM** — Claude in the VM has no browser, so use a long-lived
 token generated on the host (needs a Claude Pro/Max/Team/Enterprise subscription):
 ```bash
-claude setup-token                                       # on the HOST (browser) → copy the sk-ant-oat01-… token
-mkdir -p ~/.config/claude-code-dev-setup && umask 077
-pbpaste > ~/.config/claude-code-dev-setup/oauth-token    # paste the token here (host-only, chmod 600)
+./04-vm-auth.sh    # runs `claude setup-token`, then stores the token host-side (chmod 600)
 ```
-`cc` injects it into every VM session — the token never lands in the VM image or under `~/Projects`,
+`ccvm` injects it into every VM session — the token never lands in the VM image or under `~/Projects`,
 so it can't be committed. Rotate by re-running `claude setup-token`; revoke at the Claude Console.
 (Simpler, less safe: `export CLAUDE_CODE_OAUTH_TOKEN=…` in the VM's `~/.profile`, or just run
 `claude` once inside the VM and finish the interactive login.)
 
 ## Daily workflow
 ```bash
-cc <project>     # opens VS Code on the host + a Claude session INSIDE the VM
-cc               # just shell into the VM (at ~/Projects)
+ccvm <project>     # opens VS Code on the host + a Claude session INSIDE the VM
+ccvm               # just shell into the VM (at ~/Projects)
 ```
-`new-project.sh <name>` scaffolds under `~/Projects` then **auto-launches `cc`** (VS Code +
+`05-new-project.sh <name>` scaffolds under `~/Projects` then **auto-launches `ccvm`** (VS Code +
 Claude in the VM). Edit in VS Code on your Mac; the VM sees the changes instantly.
 
-Because the VM is the boundary, you can run Claude with **`--dangerously-skip-permissions`**
-inside it for fully unattended work, with much less risk than on the host.
+## Host vs VM settings — opposite postures by design
+The host and the VM **must not share** one `settings.json` — they want opposite security postures:
+
+| | Sandbox | Permissions | Why |
+|---|---|---|---|
+| **Host** (symlinked `settings.json`) | **on** (Seatbelt) | `acceptEdits` + allow-list | the host is the sensitive environment — lock it down |
+| **VM** (`settings.json` real file) | **off** | `bypassPermissions` (max autonomy) | the VM **is** the boundary — let Claude run unattended |
+
+The VM posture lives in [`claude-config/settings.vm.json`](../claude-config/settings.vm.json) (just the
+deltas: `sandbox.enabled=false`, `permissions.defaultMode=bypassPermissions`). `03-vm-up.sh` merges it
+over the base and writes a **real** `~/.claude/settings.json` in the VM, **regenerated every run** so it
+stays in sync with the kit; the host keeps the symlinked, sandboxed profile. So Claude runs unattended in
+the VM without per-command prompts — far lower risk than doing that on the host.
+
+> The VM provisions `bubblewrap` + `socat` so Claude's sandbox *capability* check passes (clean `/doctor`),
+> while `sandbox.enabled=false` keeps the sandbox itself **unused** — so zero friction and no nag.
 
 ## Monitoring (Grafana) lives in the VM
 No second VM — the OTEL/Grafana stack runs in the same Colima VM:
 ```bash
-cc                                   # into the VM
+ccvm                                   # into the VM
 cd ~/claude-code-otel && make up     # start collector + Prometheus + Grafana
 ```
 Open **http://localhost:3000** on your Mac (admin/admin) — Lima forwards the VM's local
@@ -78,7 +90,7 @@ rm -rf ~/Tools/claude-code-otel           # host OTEL clone — the VM has its o
 uv tool uninstall claude-monitor 2>/dev/null || true   # optional — monitoring lives in the VM now
 brew uninstall claude-squad 2>/dev/null || true        # optional — removes the 'cs' alias too
 ```
-A later `./setup.sh` re-run would reinstall these; pass `--no-extras` to keep the host lean. The
+A later `./01-setup.sh` re-run would reinstall these; pass `--no-extras` to keep the host lean. The
 host's `~/.claude` config (skills, MCP, settings) is harmless to keep — it's just unused while you
 work in the VM.
 

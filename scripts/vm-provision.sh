@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # vm-provision.sh — provision the Colima Linux VM as a full Claude Code dev box.
-# Runs INSIDE the VM (Ubuntu). Idempotent. Invoked by vm-up.sh as:
+# Runs INSIDE the VM (Ubuntu). Idempotent. Invoked by 03-vm-up.sh as:
 #     vm-provision.sh <KIT_DIR>
 # Installs Claude Code + git/jq/gitleaks/uv, reuses the (mounted) kit for skills + global
 # config, installs claude-monitor, and clones claude-code-otel for in-VM Grafana monitoring.
@@ -15,9 +15,11 @@ has(){  command -v "$1" >/dev/null 2>&1; }
 say "Provisioning the VM as a Claude Code dev box…"
 
 # --- base tools ------------------------------------------------------------
+# bubblewrap + socat satisfy Claude Code's sandbox *capability* check (clean /doctor); the VM
+# profile keeps the sandbox itself OFF via settings.vm.json, so they stay unused (no friction).
 if has apt-get; then
   sudo apt-get update -qq >/dev/null 2>&1 || true
-  sudo apt-get install -y -qq git jq curl ca-certificates build-essential >/dev/null 2>&1 || warn "apt install issues"
+  sudo apt-get install -y -qq git jq curl ca-certificates build-essential bubblewrap socat >/dev/null 2>&1 || warn "apt install issues"
 fi
 
 # --- uv --------------------------------------------------------------------
@@ -58,6 +60,37 @@ else
   warn "kit dir not found ($KIT) — skipped skills/config (is ~/Projects mounted?)."
 fi
 
+# --- pre-mark onboarding so the FIRST interactive `claude` skips the login/theme wizard ----
+# Auth comes from the CLAUDE_CODE_OAUTH_TOKEN that `ccvm` injects; without this flag the
+# first interactive run shows the onboarding (login method + theme) even when authenticated.
+cc_json="$HOME/.claude.json"
+[[ -f "$cc_json" ]] || echo '{}' > "$cc_json"
+if has jq; then
+  tmp="$(mktemp)"
+  if jq '.hasCompletedOnboarding=true | .theme=(.theme // "dark")' "$cc_json" > "$tmp" 2>/dev/null; then
+    mv "$tmp" "$cc_json" && ok "onboarding pre-marked (first interactive run skips login/theme; theme=dark)"
+  else
+    rm -f "$tmp"; warn "could not patch ~/.claude.json — first interactive run will show onboarding."
+  fi
+fi
+
+# --- VM settings profile: the VM is the security boundary, so it runs the OPPOSITE posture
+#     to the host — NO inner Bash sandbox + max autonomy (bypassPermissions). We write a REAL
+#     ~/.claude/settings.json = kit base * VM overlay, REGENERATED every run so it stays in sync
+#     with the kit; the macOS host keeps the symlinked, sandboxed/locked-down profile.
+base="$KIT/claude-config/settings.json"
+overlay="$KIT/claude-config/settings.vm.json"
+us="$HOME/.claude/settings.json"
+if has jq && [[ -f "$base" && -f "$overlay" ]]; then
+  tmp="$(mktemp)"
+  if jq -s '.[0] * .[1]' "$base" "$overlay" > "$tmp" 2>/dev/null; then
+    rm -f "$us"; mv "$tmp" "$us"
+    ok "VM settings profile written (sandbox off + max autonomy; refreshed from the kit each run)"
+  else
+    rm -f "$tmp"; warn "could not build VM settings.json — keeping the symlinked host profile."
+  fi
+fi
+
 # --- usage gauge -----------------------------------------------------------
 if has uv; then uv tool install claude-monitor >/dev/null 2>&1 || uv tool upgrade claude-monitor >/dev/null 2>&1 || true; fi
 
@@ -72,5 +105,5 @@ else
 fi
 
 ok "VM provisioned."
-printf '  Log in once:  claude            (or on host: claude setup-token -> export CLAUDE_CODE_OAUTH_TOKEN)\n'
+printf '  Authenticate once on the HOST:  ./04-vm-auth.sh   (claude setup-token -> host-only token; ccvm injects it)\n'
 printf '  Grafana:      cd %s && make up   -> http://localhost:3000 on your Mac\n' "$otel"

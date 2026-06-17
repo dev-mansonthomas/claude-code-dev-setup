@@ -31,7 +31,7 @@ has python3 || warn "python3 not found — install via pyenv (see Mac OS Setup d
 # gh       : create/push the GitHub repo, auth helper
 # gitleaks : powers the git-secret-guard hook
 # uv       : runs the Redis MCP server via uvx (per project)
-# jq       : JSON inspection used by doctor.sh / config merge
+# jq       : JSON inspection used by 02-doctor.sh / config merge
 ensure_brew gh
 ensure_brew gitleaks
 ensure_brew uv

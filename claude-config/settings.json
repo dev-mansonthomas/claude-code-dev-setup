@@ -7,8 +7,7 @@
     "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317"
   },
   "includeCoAuthoredBy": true,
-    "permissions": {
-    "defaultMode": "acceptEdits",
+  "permissions": {
     "allow": [
       "Read",
       "Glob",
@@ -69,7 +68,8 @@
       "Bash(cargo:*)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "defaultMode": "acceptEdits"
   },
   "model": "opus",
   "hooks": {
