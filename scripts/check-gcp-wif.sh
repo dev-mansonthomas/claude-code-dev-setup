@@ -76,10 +76,11 @@ if [ "${#missing[@]}" -eq 0 ]; then
 else
   warn "NOT YET — missing ${#missing[@]} of ${#req[@]} permission(s) (listed above)."
   log ""
-  log "  → Ask a project Owner/admin for these roles (or have them run the setup):"
+  log "  → Grant them with ./scripts/enable-gcp-wif.sh (or have an admin run it):"
   log "      roles/iam.workloadIdentityPoolAdmin"
   log "      roles/iam.serviceAccountAdmin"
   log "      roles/resourcemanager.projectIamAdmin"
+  log "      roles/serviceusage.serviceUsageAdmin"
 fi
 log ""
 log "  Note: Domain Restricted Sharing is intentionally NOT checked (reading org policy needs"
