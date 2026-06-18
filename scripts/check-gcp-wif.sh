@@ -43,7 +43,7 @@ if [ -z "$PROJECT" ]; then
   select PROJECT in "${projects[@]}"; do [ -n "${PROJECT:-}" ] && break; done
 fi
 ok "Project: $PROJECT"
-GC=(gcloud --account="$ACCOUNT")
+GC=(gcloud --account="$ACCOUNT" --quiet)   # --quiet: never prompt (e.g. "enable API?") → never hang
 
 # --- 3) IAM permissions needed to set up WIF -------------------------------
 req=(iam.workloadIdentityPools.create iam.workloadIdentityPoolProviders.create \
@@ -52,30 +52,40 @@ req=(iam.workloadIdentityPools.create iam.workloadIdentityPoolProviders.create \
 info "Testing IAM permissions on $PROJECT …"
 have="$("${GC[@]}" projects test-iam-permissions "$PROJECT" \
         --permissions="$(IFS=,; printf '%s' "${req[*]}")" \
-        --format='value(permissions)' 2>/dev/null || true)"
+        --format='value(permissions)' </dev/null 2>/dev/null || true)"
 missing=()
 for p in "${req[@]}"; do
   printf '%s\n' "$have" | grep -qx "$p" || missing+=("$p")
 done
 
-# --- helper: is an org-policy constraint restrictive (has allowedValues)? ---
-policy_state() {  # prints: restrictive | ok | unknown
-  local json
-  if json="$("${GC[@]}" org-policies describe "$1" --project="$PROJECT" --effective --format=json 2>/dev/null)"; then
+# --- helper: org-policy constraint state. Echoes "STATE|HINT" (STATE: restrictive|ok|unknown).
+# stdin is closed so a hidden "enable API?" prompt can't hang it; on failure, explain why.
+policy_state() {
+  local json errf hint; errf="$(mktemp "${TMPDIR:-/tmp}/wifchk.XXXXXX")"
+  if json="$("${GC[@]}" org-policies describe "$1" --project="$PROJECT" --effective --format=json </dev/null 2>"$errf")"; then
+    rm -f "$errf"
     if printf '%s' "$json" | jq -e '([.spec.rules[]?.values.allowedValues // [] | length] | add // 0) > 0' >/dev/null 2>&1; then
-      echo restrictive
+      echo "restrictive|"
     else
-      echo ok
+      echo "ok|"
     fi
   else
-    echo unknown
+    if grep -qiE 'not enabled|SERVICE_DISABLED|orgpolicy\.googleapis' "$errf"; then
+      hint="Org Policy API is off — enable once:  gcloud services enable orgpolicy.googleapis.com --project=$PROJECT  then re-run."
+    elif grep -qiE 'permission|denied' "$errf"; then
+      hint="you lack the org-policy viewer (orgpolicy.policy.get) — ask an admin to check, or to run this."
+    else
+      hint="$(tr '\n' ' ' < "$errf" | cut -c1-160)"
+    fi
+    rm -f "$errf"
+    echo "unknown|$hint"
   fi
 }
 
 info "Reading org policy: Domain Restricted Sharing …"
-drs_state="$(policy_state constraints/iam.allowedPolicyMemberDomains)"
+drs_out="$(policy_state constraints/iam.allowedPolicyMemberDomains)"; drs_state="${drs_out%%|*}"; drs_hint="${drs_out#*|}"
 info "Reading org policy: allowed WIF providers …"
-wifp_state="$(policy_state constraints/iam.workloadIdentityPoolProviders)"
+wifp_out="$(policy_state constraints/iam.workloadIdentityPoolProviders)"; wifp_state="${wifp_out%%|*}"
 
 # --- verdict ---------------------------------------------------------------
 log ""
@@ -89,7 +99,7 @@ fi
 case "$drs_state" in
   ok)          ok   "Org policy: Domain Restricted Sharing does not block external principals." ;;
   restrictive) warn "Org policy: Domain Restricted Sharing is ENFORCED → binding the GitHub OIDC principal will be DENIED without an org-admin exception." ;;
-  *)           warn "Org policy: couldn't read iam.allowedPolicyMemberDomains (no org-policy viewer?). Verify with an admin." ;;
+  *)           warn "Org policy: couldn't read Domain Restricted Sharing — ${drs_hint:-verify with an admin}." ;;
 esac
 case "$wifp_state" in
   restricted|restrictive) warn "Org policy: WIF providers restricted → confirm an admin allows issuer https://token.actions.githubusercontent.com." ;;
