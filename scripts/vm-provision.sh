@@ -15,14 +15,18 @@ has(){  command -v "$1" >/dev/null 2>&1; }
 say "Provisioning the VM as a Claude Code dev box…"
 
 # --- base tools ------------------------------------------------------------
-# NB: we deliberately do NOT install bubblewrap/socat. Installing them makes Claude Code ENABLE
-# its Bash sandbox, which then prompts "(unsandboxed) — proceed?" per command — even with
-# --dangerously-skip-permissions. The VM is the security boundary, so we want NO inner sandbox:
-# commands run unsandboxed and ccvm passes --dangerously-skip-permissions for zero prompts.
-# /doctor shows a cosmetic "sandbox: missing bubblewrap" note — expected and harmless.
+# zsh: match the host's interactive shell (Claude's command tool still runs bash, so keep scripts
+# POSIX/bash-portable). NB: we deliberately do NOT install bubblewrap/socat — they'd make Claude
+# Code ENABLE its Bash sandbox, which then prompts "(unsandboxed)" per command; the VM is the
+# boundary, so we run with NO inner sandbox (acceptEdits + a broad allow-list — see settings.vm.json).
+# /doctor then shows a cosmetic "sandbox: missing bubblewrap" note — expected and harmless.
 if has apt-get; then
   sudo apt-get update -qq >/dev/null 2>&1 || true
-  sudo apt-get install -y -qq git jq curl ca-certificates build-essential >/dev/null 2>&1 || warn "apt install issues"
+  sudo apt-get install -y -qq git jq curl ca-certificates build-essential zsh >/dev/null 2>&1 || warn "apt install issues"
+fi
+# Make zsh the interactive login shell for this user (matches the host).
+if has zsh && [ "$(getent passwd "$(id -un)" | cut -d: -f7)" != "$(command -v zsh)" ]; then
+  if sudo chsh -s "$(command -v zsh)" "$(id -un)" 2>/dev/null; then ok "zsh is the VM login shell"; else warn "could not chsh to zsh (cosmetic)."; fi
 fi
 
 # --- uv --------------------------------------------------------------------

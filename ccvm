@@ -22,7 +22,7 @@ if [[ -z "$tok" && -r "$TOKEN_FILE" ]]; then tok="$(tr -d '[:space:]' < "$TOKEN_
 if [[ $# -eq 0 ]]; then
   ssh_cmd=(colima ssh --)
   if [[ -n "$tok" ]]; then ssh_cmd+=(env "CLAUDE_CODE_OAUTH_TOKEN=$tok"); fi
-  ssh_cmd+=(bash -lc "cd '$PROJECTS' 2>/dev/null || true; exec bash -l")
+  ssh_cmd+=(bash -lc "cd '$PROJECTS' 2>/dev/null || true; exec \"\$(command -v zsh || echo bash)\" -l")
   exec "${ssh_cmd[@]}"
 fi
 
