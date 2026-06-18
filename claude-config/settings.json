@@ -91,5 +91,6 @@
     "padding": 0,
     "refreshInterval": 10
   },
-  "theme": "dark"
+  "theme": "dark",
+  "skipWorkflowUsageWarning": true
 }

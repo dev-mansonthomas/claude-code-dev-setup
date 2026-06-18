@@ -15,11 +15,14 @@ has(){  command -v "$1" >/dev/null 2>&1; }
 say "Provisioning the VM as a Claude Code dev box…"
 
 # --- base tools ------------------------------------------------------------
-# bubblewrap + socat satisfy Claude Code's sandbox *capability* check (clean /doctor); the VM
-# profile keeps the sandbox itself OFF via settings.vm.json, so they stay unused (no friction).
+# NB: we deliberately do NOT install bubblewrap/socat. Installing them makes Claude Code ENABLE
+# its Bash sandbox, which then prompts "(unsandboxed) — proceed?" per command — even with
+# --dangerously-skip-permissions. The VM is the security boundary, so we want NO inner sandbox:
+# commands run unsandboxed and ccvm passes --dangerously-skip-permissions for zero prompts.
+# /doctor shows a cosmetic "sandbox: missing bubblewrap" note — expected and harmless.
 if has apt-get; then
   sudo apt-get update -qq >/dev/null 2>&1 || true
-  sudo apt-get install -y -qq git jq curl ca-certificates build-essential bubblewrap socat >/dev/null 2>&1 || warn "apt install issues"
+  sudo apt-get install -y -qq git jq curl ca-certificates build-essential >/dev/null 2>&1 || warn "apt install issues"
 fi
 
 # --- uv --------------------------------------------------------------------
@@ -51,11 +54,23 @@ if ! has claude && [[ ! -x "$HOME/.local/bin/claude" ]]; then
 fi
 export PATH="$HOME/.local/bin:$PATH"
 
-# --- skills + global config: reuse the mounted kit (OS-agnostic steps) -----
+# --- Node.js (npx runtime for Context7/Playwright/sequential-thinking MCP + Node projects) --
+if ! has node; then
+  say "installing Node.js LTS…"
+  if curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - >/dev/null 2>&1 \
+     && sudo apt-get install -y -qq nodejs >/dev/null 2>&1; then
+    ok "node $(node -v 2>/dev/null)"
+  else
+    warn "Node install failed — npx-based MCP servers and Node projects won't work."
+  fi
+fi
+
+# --- skills + global config + MCP: reuse the mounted kit (OS-agnostic steps) -----
 if [[ -n "$KIT" && -d "$KIT" ]]; then
-  say "installing skills + global config from the kit…"
-  AUTO_YES=1 bash "$KIT/scripts/20-skills.sh"       || warn "skills step issues"
+  say "installing skills + global config + MCP from the kit…"
+  AUTO_YES=1 bash "$KIT/scripts/20-skills.sh"        || warn "skills step issues"
   AUTO_YES=1 bash "$KIT/scripts/50-global-config.sh" || warn "config step issues"
+  AUTO_YES=1 bash "$KIT/scripts/30-mcp.sh" >/dev/null 2>&1 || warn "MCP registration issues"
 else
   warn "kit dir not found ($KIT) — skipped skills/config (is ~/Projects mounted?)."
 fi

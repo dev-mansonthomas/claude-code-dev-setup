@@ -1,34 +1,24 @@
 #!/usr/bin/env bash
-# grafana-down.sh — stop the local Claude Code monitoring dashboards.
-# Stops the claude-code-otel containers. Your telemetry settings stay in place;
-# nothing is collecting until you run ./grafana-up.sh again.
+# grafana-down.sh — stop the Claude Code monitoring dashboards (Grafana) running in the Colima VM.
+# Stops the claude-code-otel containers in the VM. Telemetry settings stay in place; nothing is
+# collected until you run ./grafana-up.sh again.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/lib.sh
 source "$HERE/scripts/lib.sh"
 
-OTEL_DIR="${OTEL_DIR:-$HOME/Tools/claude-code-otel}"
+step "Claude Code monitoring — stopping Grafana (in the Colima VM)"
 
-step "Claude Code monitoring — stopping Grafana"
-
-if [[ ! -d "$OTEL_DIR" ]]; then
-  warn "Nothing to stop — stack not found at $OTEL_DIR"
-  exit 0
-fi
-if ! has docker; then
-  warn "Docker not found — nothing to stop."
-  exit 0
-fi
-if ! docker info >/dev/null 2>&1; then
-  ok "Docker isn't running — monitoring is already stopped."
+has colima || die "Colima not installed."
+if ! colima status >/dev/null 2>&1; then
+  ok "Colima VM not running — monitoring is already stopped."
   exit 0
 fi
 
-if [[ -f "$OTEL_DIR/Makefile" ]] && grep -qE '^down:' "$OTEL_DIR/Makefile"; then
-  make -C "$OTEL_DIR" down
+# shellcheck disable=SC2016  # $HOME/$d are intentionally expanded by the VM's bash, not the host
+if colima ssh -- bash -lc 'd="$HOME/claude-code-otel"; [ -d "$d" ] || exit 0; cd "$d" && make down'; then
+  ok "Monitoring stopped (containers down). Telemetry settings stay in place."
+  log "Start again with: ./grafana-up.sh"
 else
-  ( cd "$OTEL_DIR" && docker compose down )
+  warn "Could not stop the stack (maybe already down, or the VM isn't provisioned)."
 fi
-
-ok "Monitoring stopped (containers down). Telemetry settings stay in place."
-log "Start again with: ./grafana-up.sh"

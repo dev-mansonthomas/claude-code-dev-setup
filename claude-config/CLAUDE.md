@@ -34,6 +34,16 @@ For anything non-trivial, follow this loop and say which step you're in:
    secret scan + docs check must pass *before* proposing a commit.
 7. **Document** — update human + agent docs (`/doc-sync`).
 
+## Autonomy by default
+
+**Qualify the *need* up front — not every already-decided step.** When the user has already
+named the sequence ("do X, then Y", "fix it and run the tests"), execute the whole chain
+without pausing to re-confirm; act, then report. Pause **only** to (a) resolve a genuine
+choice that is the user's to make, or (b) before an irreversible / outward-facing action —
+**commit, push, publish, delete, send** (these stay manual unless the user says otherwise).
+Don't re-ask for steps the user already authorised. This scopes *Qualify* above: ask the
+missing questions about the **goal**, then proceed.
+
 ## Non-negotiables
 
 - **Never claim something works without running it.** Run the tests/build/lint
