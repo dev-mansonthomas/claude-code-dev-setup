@@ -15,11 +15,14 @@ Scope note (optional): $ARGUMENTS
 2. **Lint** — (`eslint`/`npm run lint` / `ruff check` …).
 3. **Types** — (`tsc --noEmit`/`npm run typecheck` / `mypy` …) if applicable.
 4. **Build** — (`npm run build` / `mvn -q package` …) if applicable.
-5. **Dependency audit** — (`npm audit --omit=dev` / `osv-scanner` / `pip-audit`).
+5. **Container image** — if `deploy/Dockerfile*` exists, **build** it in the VM
+   (`docker build …`) to prove the deploy image builds (build only — **no push**).
+   Deploying happens on the host via `deploy/gcp-deploy.sh` (see CLAUDE.md → *Isolated VM*).
+6. **Dependency audit** — (`npm audit --omit=dev` / `osv-scanner` / `pip-audit`).
    Report High/Critical.
-6. **Secret scan** — `gitleaks dir . --no-banner --redact` (or `gitleaks detect`).
+7. **Secret scan** — `gitleaks dir . --no-banner --redact` (or `gitleaks detect`).
    Must be clean.
-7. **Docs check** — did behavior change? If so, confirm `README.md` (human) and
+8. **Docs check** — did behavior change? If so, confirm `README.md` (human) and
    `docs/specs/*` (agent) are updated. Flag anything stale.
 
 Finish with a short checklist summary. If everything passes, propose a

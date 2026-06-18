@@ -49,6 +49,39 @@ and caveats in **[docs/isolation.md](docs/isolation.md)**.
 
 ---
 
+## The workflow — build in the VM, ship & deploy from the host
+
+The daily loop (qualify before you code):
+
+**`/brainstorm` → `/spec` → `/plan-feature` (TDD) → implement → `/code-review` + `/security-review` → `/ship` → deploy → `/doc-sync`**
+
+…and a hard split of **where** each step runs, which falls straight out of the
+[security model](#security-model--why-this-exists):
+
+| Step | In the **VM** (no credentials) | On the **host** (has credentials) |
+|---|---|---|
+| edit · test · **build Docker images** | ✅ | |
+| local git (branch, commit) | ✅ | |
+| `git push` · PR · merge | | ✅ — Claude prints the exact commands |
+| **deploy** (terraform · push image · `gcloud run deploy`) | | ✅ — `./deploy/gcp-deploy.sh` |
+
+**Why this split?**
+
+- **Build in the VM.** Building runs untrusted code — third-party deps, postinstall scripts, your
+  own work-in-progress. Confining it to the VM means a malicious dependency can't reach your SSH
+  keys, keychain, or cloud tokens. Docker runs *inside* the VM (Colima), so images build there too.
+- **Push & deploy from the host.** Pushing, PRs, and deploying need real credentials (GitHub;
+  GCP/AWS/Azure) — and those live **only on the host**. Claude in the VM never holds them: it makes
+  local commits and **prints** the host commands, and for a deploy it **generates
+  `deploy/gcp-deploy.sh`** for you to review and run on the host. (Best case: keyless deploy via
+  GitHub Actions OIDC / Workload Identity Federation — then cloud creds live on *no* laptop at all.)
+
+So a change flows: **build + commit in the VM → you `git push` / PR / merge on the host → you run
+`./deploy/gcp-deploy.sh` on the host.** The credential boundary is never crossed. Details:
+[docs/isolation.md](docs/isolation.md).
+
+---
+
 ## What you need first (prerequisites)
 
 You almost certainly have these from the "Mac OS Setup" guide. The setup script
