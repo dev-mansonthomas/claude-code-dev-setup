@@ -87,21 +87,28 @@ missing questions about the **goal**, then proceed.
 
 ## Isolated VM — credentials stay on the host
 
-Real work runs in the Colima VM (the security boundary); it holds **no outward credentials**
-(no GitHub, GCP, AWS, or Azure auth). So:
+Real work runs in the Colima VM (the security boundary); it holds **no outward credentials** (no
+GitHub, GCP, AWS, or Azure auth). **Build inside the VM; do every credentialed / outward action
+from the host.** When driving a project toward deployment:
 
-- **Git in the VM is local only** — branch, commit, rebase. **Never** push, open PRs, or merge
-  from the VM. When an outward git action is ready, **print the exact commands** (`git push`,
-  `gh pr create`, `gh pr merge`) for the user to copy-paste onto the **host**, which holds the
-  GitHub creds. The repo is on a shared mount, so the host already sees your commits — it just
-  runs them.
-- **Deploy in two steps**: **build/test in the VM**, **deploy from outside it**. Prefer **keyless
-  CI** — push, then GitHub Actions deploys via OIDC / Workload Identity Federation (GCP) or an
-  OIDC role (AWS/Azure), so cloud creds live on **no laptop at all**. Never put gcloud/aws/az
-  credentials in the VM.
+- **Build — in the VM.** Compile, run tests, and build **Docker images** inside the VM (Docker =
+  Colima). Default to **one combined image per app** (e.g. frontend + backend together) to save
+  infra; split into multiple images only when parts scale or deploy independently. Keep the
+  `Dockerfile`(s) in the project's `deploy/` folder. `/ship` builds the image as a gate before shipping.
+- **Git — local only.** Branch, commit, rebase in the VM. **Never** push, open PRs, or merge from
+  the VM. When ready, **print the exact commands** (`git push`, `gh pr create`, `gh pr merge`) for
+  the user to run on the **host**, which holds the GitHub creds. The repo is on a shared mount, so
+  the host already sees your commits — it just runs them.
+- **Deploy — generate a host script; never deploy from the VM.** Produce `deploy/gcp-deploy.sh`
+  (idempotent, host-run) plus `deploy/Dockerfile` and `deploy/deploy.env.example`, then **tell the
+  user to run `./deploy/gcp-deploy.sh` on the host**. That script does the credentialed work:
+  terraform (if any) → build/push the image (Cloud Build, or push the VM-built image) → deploy
+  (e.g. `gcloud run deploy`) → print the URL. Deploy auth = the user's `gcloud` on the host (or
+  keyless GitHub-Actions OIDC / Workload Identity Federation when available). **Never** run a
+  deploy, or place gcloud/aws/az credentials, inside the VM.
 - **Never** write a script for the host to run blindly — a compromised VM would escalate to the
-  host. Print commands for the user to review, or emit a declarative request that a trusted,
-  version-controlled host-side runner validates against an allowlist.
+  host. The user **reviews** `deploy/gcp-deploy.sh` before running it; otherwise print commands for
+  review, or emit a declarative request a trusted host-side runner validates.
 - The VM's **interactive** shell is zsh (matches the host); keep scripts you write
   **POSIX/bash-portable** — Claude's command tool runs bash.
 
