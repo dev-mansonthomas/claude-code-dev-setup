@@ -42,15 +42,15 @@ else
   echo "(VS Code 'code' not on PATH — skipping editor; install: brew install --cask visual-studio-code)" >&2
 fi
 
-# Enter the VM at the project and launch Claude there. We rely on acceptEdits mode + a broad
-# allow-list (settings.vm.json + the kit's allow rules) rather than --dangerously-skip-permissions:
-# that flag's bypass path is buggy in current Claude Code (it STILL prompts for compound Bash and
-# MCP calls), whereas acceptEdits + allow-list auto-approves allow-listed commands — including
-# compound ones, which Claude splits and checks part-by-part — and restores the "don't ask again"
-# option for anything new. Set CCVM_YOLO=1 to opt back into the bypass flag (e.g. once the upstream
-# bug is fixed).
+# Enter the VM at the project and launch Claude there. We start in acceptEdits mode via the CLI
+# FLAG — settings.json's defaultMode isn't reliably honored for interactive sessions, so the flag
+# is what actually takes effect. Result: file edits/creates auto-apply (no "create this file?"
+# prompts), and Bash uses the broad allow-list (allowed commands auto-run; anything new prompts
+# once with "don't ask again"). We avoid --dangerously-skip-permissions: its bypass path is buggy
+# in current Claude Code (still prompts for compound Bash + MCP). CCVM_YOLO=1 opts into the bypass
+# flag anyway (e.g. once the upstream bug is fixed).
 echo "→ entering VM at $abs  (Claude Code runs inside the VM; edit on the host)"
-flags=""
+flags=" --permission-mode acceptEdits"
 if [[ -n "${CCVM_YOLO:-}" ]]; then flags=" --dangerously-skip-permissions"; fi
 ssh_cmd=(colima ssh --)
 if [[ -n "$tok" ]]; then ssh_cmd+=(env "CLAUDE_CODE_OAUTH_TOKEN=$tok"); fi
