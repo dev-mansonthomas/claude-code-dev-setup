@@ -1,4 +1,5 @@
 {
+  "env": { "DISABLE_GROWTHBOOK": "1" },
   "sandbox": { "enabled": false },
-  "permissions": { "defaultMode": "bypassPermissions" }
+  "permissions": { "defaultMode": "acceptEdits" }
 }

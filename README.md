@@ -33,7 +33,7 @@ Two tiers — pick per task:
 | | Where Claude runs | Use it for | Exposure |
 |---|---|---|---|
 | **Host** (Mac app / `claude`) | your macOS user account | trivial, trusted, low-risk edits & questions | **full** access to your account — only when you trust the prompt and aren't running untrusted code/deps |
-| **VM mode** *(default)* | inside the Colima Linux VM | real work: untrusted deps, builds, autonomous or `--dangerously-skip-permissions` runs | confined to the VM **+** the mounted `~/Projects` |
+| **VM mode** *(default)* | inside the Colima Linux VM | real work: untrusted deps, builds, autonomous runs (`acceptEdits` + broad allow-list) | confined to the VM **+** the mounted `~/Projects` |
 
 **What VM mode protects:** credential theft (SSH keys, keychain, cloud/API tokens, browser
 cookies) and destructive actions (mass deletion, ransomware-style writes) **can't reach the host** —
@@ -130,7 +130,8 @@ rest of macOS.
 ccvm my-app                  # open VS Code on the host + a Claude session inside the VM
 ```
 `05-new-project.sh` auto-launches `ccvm` after scaffolding; monitoring (Grafana) runs in the same
-VM (no second VM). Inside the VM you can safely use `--dangerously-skip-permissions`.
+VM (no second VM). Inside the VM, Claude runs in `acceptEdits` with a broad allow-list — it
+auto-accepts edits and auto-runs the dev toolchain, so you work hands-off (see [docs/isolation.md](docs/isolation.md)).
 Full guide + caveats: **[docs/isolation.md](docs/isolation.md)**.
 
 ### Authenticate the VM once (`CLAUDE_CODE_OAUTH_TOKEN`)
@@ -279,7 +280,7 @@ Maven: point the local repo at a writable path — `mvn -Dmaven.repo.local=.m2 �
 | `05-new-project.sh` | scaffold a new project from `project-template/` (also `make new-project`) |
 | `ccvm` | enter the VM at a project + open VS Code (the default isolated workflow) |
 | `sync-project.sh` | pull updated kit infra files into an existing project (also `make sync-project`) |
-| `grafana-up.sh` / `grafana-down.sh` | start / stop the Grafana dashboards (monitoring runs in the VM by default; these target the host `--with-extras` clone) |
+| `grafana-up.sh` / `grafana-down.sh` | start / stop the Grafana dashboards — drives the OTEL/Grafana stack **inside the Colima VM** from the host + opens the browser |
 | `scripts/` | the individual, re-runnable setup steps |
 | `claude-config/CLAUDE.md` | **global engineering standards** (loaded every session) |
 | `claude-config/settings.json` | model, permission allowlist, hook wiring (**host** profile: sandboxed) |

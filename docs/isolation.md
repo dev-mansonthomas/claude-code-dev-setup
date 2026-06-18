@@ -44,16 +44,20 @@ The host and the VM **must not share** one `settings.json` — they want opposit
 | | Sandbox | Permissions | Why |
 |---|---|---|---|
 | **Host** (symlinked `settings.json`) | **on** (Seatbelt) | `acceptEdits` + allow-list | the host is the sensitive environment — lock it down |
-| **VM** (`settings.json` real file) | **off** | `bypassPermissions` (max autonomy) | the VM **is** the boundary — let Claude run unattended |
+| **VM** (`settings.json` real file) | **off** | `acceptEdits` + **broad allow-list** | the VM **is** the boundary — auto-accept edits and auto-run the dev toolchain |
 
 The VM posture lives in [`claude-config/settings.vm.json`](../claude-config/settings.vm.json) (just the
-deltas: `sandbox.enabled=false`, `permissions.defaultMode=bypassPermissions`). `03-vm-up.sh` merges it
-over the base and writes a **real** `~/.claude/settings.json` in the VM, **regenerated every run** so it
-stays in sync with the kit; the host keeps the symlinked, sandboxed profile. So Claude runs unattended in
-the VM without per-command prompts — far lower risk than doing that on the host.
+deltas: `sandbox.enabled=false`, `permissions.defaultMode=acceptEdits`). `03-vm-up.sh` merges it over the
+base and writes a **real** `~/.claude/settings.json` in the VM, **regenerated every run** so it stays in
+sync with the kit; the host keeps the symlinked, sandboxed profile. With `acceptEdits` + the broad
+allow-list, Claude auto-accepts edits and auto-runs allow-listed commands (incl. MCP) — only a *novel*
+command prompts (once, with a "don't ask again" option).
 
-> The VM provisions `bubblewrap` + `socat` so Claude's sandbox *capability* check passes (clean `/doctor`),
-> while `sandbox.enabled=false` keeps the sandbox itself **unused** — so zero friction and no nag.
+> **Why not `bypassPermissions` / `--dangerously-skip-permissions`?** That bypass path is buggy in current
+> Claude Code — it still prompts for **compound** Bash (`a && b | c`) and **MCP** calls. `acceptEdits` + a
+> broad allow-list is the reliable mechanism (`ccvm` exposes `CCVM_YOLO=1` to opt back into the flag once
+> it's fixed upstream). We deliberately **do not install bubblewrap**, so `/doctor` shows a cosmetic
+> *"sandbox: missing bubblewrap"* — expected; installing it would re-enable the sandbox and bring prompts back.
 
 ## Monitoring (Grafana) lives in the VM
 No second VM — the OTEL/Grafana stack runs in the same Colima VM:
