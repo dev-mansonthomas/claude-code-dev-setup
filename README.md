@@ -327,6 +327,7 @@ Maven: point the local repo at a writable path â€” `mvn -Dmaven.repo.local=.m2 â
 | `docs/tooling-setup.md` | what the dev-tools step installs/wires + manual finishing steps |
 | `docs/security-roadmap.md` | parked hardening plan: egress firewall + token capture-resistance |
 | `docs/isolation.md` | the always-on Colima VM workflow (isolated default env) |
+| `docs/migration-from-augment.md` | handover playbook + copy-paste prompt to migrate a project from Augment |
 
 ## Keeping current
 
