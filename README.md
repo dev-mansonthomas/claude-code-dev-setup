@@ -327,7 +327,7 @@ Maven: point the local repo at a writable path — `mvn -Dmaven.repo.local=.m2 �
 | `docs/tooling-setup.md` | what the dev-tools step installs/wires + manual finishing steps |
 | `docs/security-roadmap.md` | parked hardening plan: egress firewall + token capture-resistance |
 | `docs/isolation.md` | the always-on Colima VM workflow (isolated default env) |
-| `docs/migration-from-augment.md` | handover playbook + copy-paste prompt to migrate a project from Augment |
+| `docs/migration-from-augment.md` | two-phase Augment→Claude Code handover: prompt 1 dumps Augment's state, prompt 2 (in the VM) verifies & adapts it |
 
 ## Keeping current
 
