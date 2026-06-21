@@ -189,6 +189,21 @@ secret inside the VM. Or just run `claude` once inside the VM and complete the i
 Now that everything runs in the VM, the **host** copies of the monitoring stack are redundant — see
 [docs/isolation.md → Trim the host](docs/isolation.md#trim-the-host-to-vm-only-optional).
 
+### Multi-line prompts in the VM (one-time terminal setup)
+
+`ccvm` runs Claude **inside the VM over SSH**, so `/terminal-setup` (which configures your *local*
+terminal) reports `cannot be run from ssh-session`, and `Shift+Enter` submits instead of adding a
+newline. Fix it once **on the host terminal**:
+
+- **Any terminal — works immediately:** press **`Ctrl+J`** to insert a newline (`Enter` still submits).
+- **iTerm2 — to make `Shift+Enter` do it:** Settings (`⌘,`) → Profiles → your profile → Keys →
+  **Key Mappings** → `+` → Shortcut **`Shift+Return`**, Action **Send Hex Codes**, Value **`0x0a`**.
+  That's `LF` — the same byte as `Ctrl+J`; SSH passes it through to Claude in the VM. (Don't hand-edit
+  `com.googlecode.iterm2.plist`; the GUI writes the key mapping correctly.)
+- **VS Code / Cursor / Zed / Alacritty:** run `/terminal-setup` once in a Claude session **on the
+  host** (not via `ccvm`) — it writes the keybinding to the editor's config, which then applies over SSH.
+- **Native, no setup needed:** WezTerm, Ghostty, Kitty, Warp.
+
 ## Network firewall (planned)
 
 > **Status: not yet implemented — VM egress is open today.** The VM needs outbound internet to

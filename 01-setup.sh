@@ -81,3 +81,15 @@ cat <<'NEXT'
        then run /brainstorm to qualify the idea before any code.
 
 NEXT
+
+cat <<'MANUAL'
+  Manual, one-time — multi-line prompts in the VM (ccvm runs Claude over SSH, so
+  /terminal-setup can't run there). Set this up once on your HOST terminal:
+    - Any terminal:  press  Ctrl+J  for a newline (Enter still submits).
+    - iTerm2:        Settings -> Profiles -> Keys -> Key Mappings -> '+'
+                     Shortcut: Shift+Return,  Action: Send Hex Codes,  Value: 0x0a
+    - VS Code / Cursor / Zed / Alacritty:  run /terminal-setup once in a HOST Claude session.
+    - Native (no setup): WezTerm, Ghostty, Kitty, Warp.
+    Details: README.md -> "Multi-line prompts in the VM".
+
+MANUAL
