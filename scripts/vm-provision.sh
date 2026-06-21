@@ -93,18 +93,22 @@ if has jq; then
   fi
 fi
 
-# --- VM settings profile: the VM is the security boundary, so it runs the OPPOSITE posture
-#     to the host — NO inner Bash sandbox + max autonomy (bypassPermissions). We write a REAL
-#     ~/.claude/settings.json = kit base * VM overlay, REGENERATED every run so it stays in sync
-#     with the kit; the macOS host keeps the symlinked, sandboxed/locked-down profile.
+# --- VM settings profile: the VM is the security boundary, so it runs the OPPOSITE posture to the
+#     host — NO inner Bash sandbox + full autonomy via a BROAD allow-list (all Bash, file edits,
+#     WebSearch/WebFetch, the MCP servers) under acceptEdits. Result: no authorization prompts,
+#     without relying on the buggy --dangerously-skip-permissions flag. We write a REAL
+#     ~/.claude/settings.json = (kit base * VM overlay) with the two allow-lists UNIONED, REGENERATED
+#     every run so it stays in sync with the kit; the macOS host keeps the symlinked, locked-down profile.
 base="$KIT/claude-config/settings.json"
 overlay="$KIT/claude-config/settings.vm.json"
 us="$HOME/.claude/settings.json"
 if has jq && [[ -f "$base" && -f "$overlay" ]]; then
   tmp="$(mktemp)"
-  if jq -s '.[0] * .[1]' "$base" "$overlay" > "$tmp" 2>/dev/null; then
+  if jq -s '(.[0].permissions.allow // []) as $ba | (.[1].permissions.allow // []) as $oa
+            | (.[0] * .[1]) | .permissions.allow = (($ba + $oa) | unique)' \
+        "$base" "$overlay" > "$tmp" 2>/dev/null; then
     rm -f "$us"; mv "$tmp" "$us"
-    ok "VM settings profile written (sandbox off + max autonomy; refreshed from the kit each run)"
+    ok "VM settings profile written (sandbox off + broad allow-list = full autonomy; refreshed from the kit each run)"
   else
     rm -f "$tmp"; warn "could not build VM settings.json — keeping the symlinked host profile."
   fi
