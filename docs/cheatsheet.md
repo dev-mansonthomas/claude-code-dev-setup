@@ -17,6 +17,17 @@ claude -p "…"     # headless (scripts/CI)
 ./05-new-project.sh app        # scaffold ../app  (or: make new-project NAME=app)
 ```
 
+## VM (Colima) — the isolated workspace (default)
+| Goal | Command |
+|---|---|
+| **Shell into the VM** | `colima ssh` |
+| VM shell at `~/Projects` (OAuth token injected) | `ccvm` |
+| Edit on host + Claude **inside** the VM, at a project | `ccvm <project>` |
+| Start / status / stop the VM | `./03-vm-up.sh` · `colima status` · `colima stop` |
+| One-off command in the VM | `colima ssh -- bash -lc '<cmd>'` |
+
+> Files under `~/Projects` are shared host↔VM (virtiofs). Edit on the host; build/test/Claude run in the VM. Push & deploy from the **host** (the VM holds no credentials).
+
 ## In-session essentials
 | Key/Cmd | Action |
 |---|---|

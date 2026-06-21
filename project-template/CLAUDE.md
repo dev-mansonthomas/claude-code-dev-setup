@@ -34,6 +34,12 @@ TODO
 - Tests are written first. Don't mark work done without green tests.
 - Verify library versions/APIs with the **Context7 MCP** before adding deps.
 - Conventional Commits; branch off `main`; commit/push only when asked.
+- **Cloud resources** (whenever you provision any): every resource carries an `owner`
+  label/tag. Its value is **read from a `.env` file, never hard-coded** — declare a Terraform
+  `variable "owner"` fed by `TF_VAR_owner` (set in `.env`, which is git-ignored). Apply it
+  **once** via the provider default so all resources inherit it — GCP
+  `provider "google" { default_labels = { owner = var.owner } }`, AWS `default_tags` — don't
+  label resource-by-resource.
 
 ## Redis (if used)
 - Connection via env var (never hard-code). Local dev DB: TODO.
