@@ -111,6 +111,9 @@ from the host.** When driving a project toward deployment:
   review, or emit a declarative request a trusted host-side runner validates.
 - The VM's **interactive** shell is zsh (matches the host); keep scripts you write
   **POSIX/bash-portable** — Claude's command tool runs bash.
+- **Missing a tool?** If a command you need isn't installed in the VM, **don't silently work around
+  it** — name the missing command/package and tell the user to add it to `scripts/vm-provision.sh`
+  (then `./03-vm-up.sh`), so every future session has it too.
 
 ## Documentation — two audiences, always
 
