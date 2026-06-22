@@ -29,6 +29,46 @@ if has zsh && [ "$(getent passwd "$(id -un)" | cut -d: -f7)" != "$(command -v zs
   if sudo chsh -s "$(command -v zsh)" "$(id -un)" 2>/dev/null; then ok "zsh is the VM login shell"; else warn "could not chsh to zsh (cosmetic)."; fi
 fi
 
+# --- network / debug tooling (all CLI, text output the agent can read) -----
+# DNS (dig/host/nslookup), port reachability (telnet, nc), path+latency (ping/traceroute/mtr),
+# packet capture (tcpdump, and tshark = Wireshark's CLI — the closest thing the agent can use;
+# capture needs sudo/CAP_NET_RAW, which `lima` has), listening sockets (ss/netstat/lsof), a direct
+# Redis probe (redis-cli), TLS/cert inspection (openssl). We still SKIP socat — like bubblewrap it
+# makes Claude Code re-enable its Bash sandbox. DEBIAN_FRONTEND=noninteractive silences tshark's
+# "allow non-root capture?" debconf prompt (default no; use `sudo tshark`/`sudo tcpdump`).
+if has apt-get; then
+  say "installing network/debug tools (dig, telnet, nc, tcpdump, tshark, redis-cli, …)…"
+  sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+    dnsutils telnet netcat-openbsd iputils-ping traceroute mtr-tiny \
+    tcpdump tshark iproute2 net-tools lsof redis-tools openssl \
+    >/dev/null 2>&1 || warn "some network/debug tools failed to install"
+fi
+
+# --- extra debug tooling (general-purpose, CLI) ----------------------------
+# strace (syscalls of a stuck/failing process), htop + the procps suite (ps/top/free/vmstat),
+# nmap (port scan, broader than telnet/nc), httpie (readable HTTP client), yq (jq-for-YAML).
+if has apt-get; then
+  say "installing debug tools (strace, htop, nmap, httpie, yq)…"
+  sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+    strace htop procps nmap httpie yq \
+    >/dev/null 2>&1 || warn "some debug tools failed to install"
+fi
+
+# grpcurl: probe gRPC endpoints. Not in apt — fetch the static binary from GitHub (like gitleaks).
+if ! has grpcurl; then
+  say "installing grpcurl…"
+  gver="1.9.3"; case "$(uname -m)" in aarch64|arm64) garch="arm64";; *) garch="x86_64";; esac
+  gt="$(mktemp -d)"
+  if curl -fsSL "https://github.com/fullstorydev/grpcurl/releases/download/v${gver}/grpcurl_${gver}_linux_${garch}.tar.gz" -o "$gt/g.tgz" 2>/dev/null \
+     && tar -xzf "$gt/g.tgz" -C "$gt" grpcurl 2>/dev/null \
+     && sudo install "$gt/grpcurl" /usr/local/bin/grpcurl 2>/dev/null; then
+    ok "grpcurl $gver"
+  else
+    warn "grpcurl install failed (optional)."
+  fi
+  rm -rf "$gt"
+fi
+
 # --- uv --------------------------------------------------------------------
 if ! has uv; then
   say "installing uv…"
