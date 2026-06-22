@@ -42,16 +42,17 @@ else
   echo "(VS Code 'code' not on PATH — skipping editor; install: brew install --cask visual-studio-code)" >&2
 fi
 
-# Enter the VM at the project and launch Claude there. We start in acceptEdits mode via the CLI
-# FLAG — settings.json's defaultMode isn't reliably honored for interactive sessions, so the flag
-# is what actually takes effect. Result: file edits/creates auto-apply (no "create this file?"
-# prompts), and Bash uses the broad allow-list (allowed commands auto-run; anything new prompts
-# once with "don't ask again"). We avoid --dangerously-skip-permissions: its bypass path is buggy
-# in current Claude Code (still prompts for compound Bash + MCP). CCVM_YOLO=1 opts into the bypass
-# flag anyway (e.g. once the upstream bug is fixed).
+# Enter the VM at the project and launch Claude there. We start in "auto" mode via the CLI FLAG:
+# Claude auto-runs commands AND auto-applies edits, gated by a built-in safety classifier that
+# blocks destructive ops (rm -rf, git reset --hard, terraform destroy, …). This is the autonomous
+# mode that actually works on managed accounts: acceptEdits only covers edits (and its mode wasn't
+# reliably engaged here), and bypassPermissions is DISABLED by org policy on Enterprise (e.g. Redis)
+# accounts — so --dangerously-skip-permissions is a no-op for us. Escape hatches: CCVM_SAFE=1 →
+# acceptEdits (edits-only autonomy); CCVM_YOLO=1 → request bypass (only effective where policy allows).
 echo "→ entering VM at $abs  (Claude Code runs inside the VM; edit on the host)"
-flags=" --permission-mode acceptEdits"
-if [[ -n "${CCVM_YOLO:-}" ]]; then flags=" --dangerously-skip-permissions"; fi
+flags=" --permission-mode auto"
+if [[ -n "${CCVM_YOLO:-}" ]]; then flags=" --dangerously-skip-permissions"
+elif [[ -n "${CCVM_SAFE:-}" ]]; then flags=" --permission-mode acceptEdits"; fi
 ssh_cmd=(colima ssh --)
 if [[ -n "$tok" ]]; then ssh_cmd+=(env "CLAUDE_CODE_OAUTH_TOKEN=$tok"); fi
 ssh_cmd+=(bash -lc "cd '$abs' && exec claude$flags")
