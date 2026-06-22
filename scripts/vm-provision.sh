@@ -22,7 +22,7 @@ say "Provisioning the VM as a Claude Code dev box…"
 # /doctor then shows a cosmetic "sandbox: missing bubblewrap" note — expected and harmless.
 if has apt-get; then
   sudo apt-get update -qq >/dev/null 2>&1 || true
-  sudo apt-get install -y -qq git jq curl ca-certificates build-essential zsh >/dev/null 2>&1 || warn "apt install issues"
+  sudo apt-get install -y -qq git jq curl ca-certificates build-essential zsh shellcheck >/dev/null 2>&1 || warn "apt install issues"
 fi
 # Make zsh the interactive login shell for this user (matches the host).
 if has zsh && [ "$(getent passwd "$(id -un)" | cut -d: -f7)" != "$(command -v zsh)" ]; then
@@ -106,6 +106,30 @@ if ! has node; then
     ok "node $(node -v 2>/dev/null)"
   else
     warn "Node install failed — npx-based MCP servers and Node projects won't work."
+  fi
+fi
+
+# --- browser testing: Playwright browsers + system libs (web / SPA testing & screenshots) -----
+# Chromium/Firefox/WebKit need system libraries to launch (libnss3, libgbm1, libasound2t64,
+# gstreamer for webkit, fonts…) that only apt/root can install. `playwright install --with-deps`
+# installs the browser binaries (into ~/.cache/ms-playwright, reused by the Playwright MCP and any
+# project's @playwright/test) AND those libs via sudo apt — self-maintaining across Ubuntu/Chromium
+# versions (vs a hardcoded lib list). corepack enables pnpm/yarn for React+Vite / Angular. CHROME_BIN
+# points Angular's `ng test` (Karma ChromeHeadless) at Playwright's Chromium — on arm64 there's no
+# system google-chrome (amd64-only) and Ubuntu's chromium is a snap, so we reuse Playwright's build.
+# Fonts (emoji + CJK) stop screenshots rendering international text as boxes.
+if has npx; then
+  say "installing Playwright browsers (chromium/firefox/webkit) + system libs…"
+  npx --yes playwright@latest install --with-deps chromium firefox webkit >/dev/null 2>&1 \
+    || warn "Playwright browser/deps install failed (browser tests may not launch)."
+  sudo corepack enable >/dev/null 2>&1 || true
+  sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq fonts-noto-color-emoji fonts-noto-cjk >/dev/null 2>&1 || true
+  # Expose Playwright's Chromium as a stable system Chrome (CHROME_BIN) for Angular Karma / ng test.
+  chrome_bin="$(find "$HOME/.cache/ms-playwright" -maxdepth 3 -path '*chromium-*/chrome-linux/chrome' -type f 2>/dev/null | sort -V | tail -1)"
+  if [ -n "$chrome_bin" ]; then
+    sudo ln -sfn "$chrome_bin" /usr/local/bin/chrome
+    echo 'export CHROME_BIN=/usr/local/bin/chrome' | sudo tee /etc/profile.d/chrome-bin.sh >/dev/null
+    ok "CHROME_BIN -> Playwright Chromium (Angular Karma / ng test)"
   fi
 fi
 
