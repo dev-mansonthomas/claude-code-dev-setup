@@ -1,0 +1,229 @@
+#!/usr/bin/env bash
+# git-merge-pr — take an already-committed branch all the way to merged on the base branch.
+# HOST-ONLY (needs GitHub creds): push -> open/reuse PR -> wait for CI -> squash-merge --delete-branch
+# -> fast-forward the base locally -> prune. Assumes /ship (tests/lint/…) already passed: it does NOT
+# commit and does NOT run a quality gate. Solo-repo assumptions (no review waits; never force-pushes).
+#
+# Usage: git-merge-pr [--branch <name>] [--base <name>] [--timeout <sec>] [--poll <sec>]
+#                     [--no-footer] [--no-stdout] <title> [body]
+#   <title>  PR title (required)        [body]   PR body (optional)
+#   --branch branch to ship (default: current)   --base  base branch (default: repo default)
+#
+# Output: a JSON report (schemaVersion 1) to <repo>/debug/git/git-merge-pr.json AND stdout.
+# Exit codes: 0 ok | 2 usage | 3 preconditions | 4 push | 5 ci | 6 merge/conflict.
+set -uo pipefail
+
+# --- overridable seams (the test suite redefines these) --------------------
+git_()   { command git "$@"; }
+gh_()    { command gh "$@"; }
+now_()   { date -u +%Y-%m-%dT%H:%M:%SZ; }
+have_()  { command -v "$1" >/dev/null 2>&1; }
+sleep_() { command sleep "$@"; }
+
+TOOL="git-merge-pr"; SCHEMA=1
+
+# --- accumulated state (emitted by finish) ---------------------------------
+REPO=""; BASE=""; BRANCH=""
+PUSHED=false; DIRTY=false
+PR_NUMBER=""; PR_URL=""; PR_REUSED=false; PR_CREATED=false
+CI=""; CHECKS='[]'; FAILING='[]'; LOGS_CMD=""
+MERGED=false; ALREADY_MERGED=false; MERGED_SHA=""
+BASE_UPDATED=false; DEL_REMOTE=false; DEL_LOCAL=false
+ERR_CODE=""; ERR_MSG=""
+
+# --- args ------------------------------------------------------------------
+TITLE=""; BODY=""; FOOTER=1; STDOUT=1; POLL=8; TIMEOUT=600
+
+parse_args() {
+  local pos=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --branch)    BRANCH="${2:-}"; shift 2 ;;
+      --base)      BASE="${2:-}"; shift 2 ;;
+      --timeout)   TIMEOUT="${2:-600}"; shift 2 ;;
+      --poll)      POLL="${2:-8}"; shift 2 ;;
+      --no-footer) FOOTER=0; shift ;;
+      --no-stdout) STDOUT=0; shift ;;
+      -h|--help)   sed -n '2,14{/^# /p}' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+      --) shift; break ;;
+      -*) ERR_CODE=usage; ERR_MSG="unknown option: $1"; finish false 2 ;;
+      *)  if [ "$pos" -eq 0 ]; then TITLE="$1"; else BODY="$1"; fi; pos=$((pos+1)); shift ;;
+    esac
+  done
+}
+
+repo_root() { git_ rev-parse --show-toplevel 2>/dev/null; }
+
+# finish <ok:true|false> <exit_code> — assemble + write + print the JSON report, then exit.
+finish() {
+  local ok="$1" code="$2" root payload file
+  root="$(repo_root)"
+  payload="$(jq -n \
+    --argjson schemaVersion "$SCHEMA" \
+    --arg tool "$TOOL" \
+    --argjson ok "$ok" \
+    --arg repo "$REPO" --arg base "$BASE" --arg branch "$BRANCH" \
+    --arg generatedAt "$(now_)" \
+    --argjson pushed "$PUSHED" --argjson dirty "$DIRTY" \
+    --arg prNumber "$PR_NUMBER" --arg prUrl "$PR_URL" --argjson prReused "$PR_REUSED" \
+    --arg ci "$CI" --argjson checks "$CHECKS" --argjson failing "$FAILING" --arg logsCmd "$LOGS_CMD" \
+    --argjson merged "$MERGED" --argjson alreadyMerged "$ALREADY_MERGED" --arg mergedSha "$MERGED_SHA" \
+    --argjson baseUpdated "$BASE_UPDATED" --argjson delRemote "$DEL_REMOTE" --argjson delLocal "$DEL_LOCAL" \
+    --arg errCode "$ERR_CODE" --arg errMsg "$ERR_MSG" \
+    '
+    def nn: if . == "" then null else . end;
+    {
+      schemaVersion: $schemaVersion, tool: $tool, ok: $ok,
+      repo: ($repo|nn), base: ($base|nn), branch: ($branch|nn), generatedAt: $generatedAt,
+      pushed: $pushed, workingTreeDirty: $dirty,
+      pr: { number: ($prNumber | if . == "" then null else tonumber end), url: ($prUrl|nn), reused: $prReused },
+      ci: ($ci|nn), checks: $checks, failingChecks: $failing, logsCmd: ($logsCmd|nn),
+      merged: $merged, alreadyMerged: $alreadyMerged, mergedSha: ($mergedSha|nn),
+      baseUpdated: $baseUpdated, branchDeleted: { remote: $delRemote, local: $delLocal }
+    }
+    | if $ok then . else . + { error: { code: ($errCode|nn), message: ($errMsg|nn) } } end
+    ')"
+  if [ -n "$root" ] && [ -d "$root" ]; then
+    mkdir -p "$root/debug/git"
+    printf '*\n!.gitignore\n' > "$root/debug/git/.gitignore"
+    file="$root/debug/git/$TOOL.json"
+    printf '%s\n' "$payload" > "$file"
+  fi
+  [ "$STDOUT" = 1 ] && printf '%s\n' "$payload"
+  exit "$code"
+}
+
+fail() { ERR_CODE="$2"; ERR_MSG="$3"; finish false "$1"; }   # fail <exit> <code> <msg>
+
+preconditions() {
+  have_ git || { ERR_MSG="git not found"; return 1; }
+  have_ gh  || { ERR_MSG="gh not found"; return 1; }
+  git_ rev-parse --is-inside-work-tree >/dev/null 2>&1 || { ERR_MSG="not a git repository"; return 1; }
+  gh_ auth status >/dev/null 2>&1 || { ERR_MSG="gh not authenticated (run: gh auth login)"; return 1; }
+}
+
+resolve_repo() {
+  REPO="$(gh_ repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo "")"
+  if [ -z "$BASE" ]; then
+    BASE="$(gh_ repo view --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null || echo "")"
+  fi
+  [ -z "$BASE" ] && BASE=main
+  if [ -z "$BRANCH" ]; then
+    BRANCH="$(git_ rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"
+  fi
+}
+
+guards() {
+  [ -n "$TITLE" ] || fail 2 usage "PR title required"
+  [ -n "$BRANCH" ] || fail 2 usage "could not determine branch"
+  [ "$BRANCH" != "$BASE" ] || fail 2 usage "refuse to ship base branch '$BASE' into itself"
+  local ahead
+  ahead="$(git_ rev-list --count "${BASE}..${BRANCH}" 2>/dev/null || echo "")"
+  [ "$ahead" = 0 ] && fail 2 usage "branch '$BRANCH' has no commits ahead of '$BASE'"
+  [ -n "$(git_ status --porcelain 2>/dev/null)" ] && DIRTY=true
+  return 0
+}
+
+# If a PR already exists for the branch: reuse if OPEN, short-circuit if MERGED.
+detect_existing_pr() {
+  local pr_json st
+  pr_json="$(gh_ pr view "$BRANCH" --json number,state,url 2>/dev/null || echo "")"
+  [ -z "$pr_json" ] && return 0
+  PR_NUMBER="$(printf '%s' "$pr_json" | jq -r '.number // ""')"
+  PR_URL="$(printf '%s' "$pr_json" | jq -r '.url // ""')"
+  st="$(printf '%s' "$pr_json" | jq -r '.state // ""')"
+  if [ "$st" = "MERGED" ]; then
+    ALREADY_MERGED=true; MERGED=true
+    MERGED_SHA="$(gh_ pr view "$PR_NUMBER" --json mergeCommit -q '.mergeCommit.oid' 2>/dev/null | cut -c1-7)"
+    sync_prune
+    finish true 0
+  fi
+  [ "$st" = "OPEN" ] && PR_REUSED=true
+}
+
+do_push() {
+  git_ push -u origin "$BRANCH" >/dev/null 2>&1 || \
+    fail 4 push "git push rejected (remote ahead? resolve manually — never force-pushed)"
+  PUSHED=true
+}
+
+ensure_pr() {
+  [ "$PR_REUSED" = true ] && return 0
+  local body url
+  body="$BODY"
+  if [ "$FOOTER" = 1 ]; then
+    body="${body}
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)"
+  fi
+  url="$(gh_ pr create --base "$BASE" --head "$BRANCH" --title "$TITLE" --body "$body" 2>/dev/null)" || \
+    fail 6 merge "gh pr create failed"
+  PR_URL="$url"; PR_CREATED=true
+  PR_NUMBER="$(gh_ pr view "$BRANCH" --json number -q .number 2>/dev/null || echo "")"
+}
+
+poll_ci() {
+  local waited=0 raw grace_used=0 link runid
+  while :; do
+    raw="$(gh_ pr checks "$PR_NUMBER" --json name,state,bucket,link 2>/dev/null || echo "")"
+    if [ -z "$raw" ] || [ "$raw" = "[]" ]; then
+      # Just-created PRs can briefly report no checks before CI registers — grace once.
+      if [ "$PR_CREATED" = true ] && [ "$grace_used" = 0 ]; then
+        grace_used=1; sleep_ "$POLL"; waited=$((waited+POLL)); continue
+      fi
+      CI=none; CHECKS='[]'; return 0
+    fi
+    CHECKS="$raw"
+    if printf '%s' "$raw" | jq -e 'any(.[]; .bucket=="fail" or .bucket=="cancel")' >/dev/null 2>&1; then
+      CI=failed
+      FAILING="$(printf '%s' "$raw" | jq '[.[] | select(.bucket=="fail" or .bucket=="cancel") | {name, conclusion: .state, detailsUrl: .link}]')"
+      link="$(printf '%s' "$FAILING" | jq -r '.[0].detailsUrl // ""')"
+      runid="$(printf '%s' "$link" | sed -n 's#.*/actions/runs/\([0-9][0-9]*\).*#\1#p')"
+      if [ -n "$runid" ]; then LOGS_CMD="gh run view $runid --log-failed"; else LOGS_CMD="gh pr checks $PR_NUMBER"; fi
+      return 0
+    fi
+    if printf '%s' "$raw" | jq -e 'any(.[]; .bucket=="pending")' >/dev/null 2>&1; then
+      if [ "$waited" -ge "$TIMEOUT" ]; then CI=timeout; return 0; fi
+      sleep_ "$POLL"; waited=$((waited+POLL)); continue
+    fi
+    CI=success; return 0
+  done
+}
+
+do_merge() {
+  gh_ pr merge "$PR_NUMBER" --squash --delete-branch >/dev/null 2>&1 || \
+    fail 6 merge "merge failed/blocked (branch protection or conflict — not force-merged)"
+  MERGED=true; DEL_REMOTE=true
+  MERGED_SHA="$(gh_ pr view "$PR_NUMBER" --json mergeCommit -q '.mergeCommit.oid' 2>/dev/null | cut -c1-7)"
+  sync_prune
+  finish true 0
+}
+
+sync_prune() {
+  if git_ checkout "$BASE" >/dev/null 2>&1 && git_ pull --ff-only origin "$BASE" >/dev/null 2>&1; then
+    BASE_UPDATED=true
+  fi
+  git_ fetch -p >/dev/null 2>&1 || true
+  if [ -n "$BRANCH" ] && [ "$BRANCH" != "$BASE" ] && git_ branch -d "$BRANCH" >/dev/null 2>&1; then
+    DEL_LOCAL=true
+  fi
+}
+
+main() {
+  parse_args "$@"
+  have_ jq || { printf '{"schemaVersion":1,"tool":"%s","ok":false,"error":{"code":"preconditions","message":"jq not found"}}\n' "$TOOL"; exit 3; }
+  preconditions || fail 3 preconditions "$ERR_MSG"
+  resolve_repo
+  guards
+  detect_existing_pr
+  do_push
+  ensure_pr
+  poll_ci
+  case "$CI" in
+    failed)  fail 5 ci "CI failed" ;;
+    timeout) fail 5 ci "CI did not finish within ${TIMEOUT}s" ;;
+  esac
+  do_merge
+}
+
+[ "${BASH_SOURCE[0]}" = "${0}" ] && main "$@"
