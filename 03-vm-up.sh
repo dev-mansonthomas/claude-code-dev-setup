@@ -80,4 +80,11 @@ cat <<EOF
                    (runs 'claude setup-token' and stores the token host-side for ccvm to inject).
   Monitoring (Grafana) lives in the VM:  ccvm  →  cd ~/claude-code-otel && make up
                    → open http://localhost:3000 on your Mac (admin/admin; the port is forwarded).
+
+  iTerm2 (host) - one-time, for the ccvm-over-SSH workflow:
+    - Multi-line prompt: press Ctrl+J for a newline (Enter submits). For Shift+Enter, map it:
+      Settings -> Profiles -> Keys -> Key Mappings -> '+' -> Shift+Return, Send Hex Codes, 0x0a
+    - Completion bell (Claude beeps when done / needs input, over SSH):
+      Settings -> Profiles -> Terminal -> uncheck "Silence bell"
+    Details: README.md -> "Multi-line prompts in the VM".
 EOF
