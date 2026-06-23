@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# git-merge-pr — take an already-committed branch all the way to merged on the base branch.
+# git-pr-merge — take an already-committed branch all the way to merged on the base branch.
 # HOST-ONLY (needs GitHub creds): push -> open/reuse PR -> wait for CI -> squash-merge --delete-branch
 # -> fast-forward the base locally -> prune. Assumes /ship (tests/lint/…) already passed: it does NOT
 # commit and does NOT run a quality gate. Solo-repo assumptions (no review waits; never force-pushes).
 #
-# Usage: git-merge-pr [--branch <name>] [--base <name>] [--timeout <sec>] [--poll <sec>]
+# Usage: git-pr-merge [--branch <name>] [--base <name>] [--timeout <sec>] [--poll <sec>]
 #                     [--no-footer] [--no-stdout] <title> [body]
 #   <title>  PR title (required)        [body]   PR body (optional)
 #   --branch branch to ship (default: current)   --base  base branch (default: repo default)
 #
-# Output: a JSON report (schemaVersion 1) to <repo>/debug/git/git-merge-pr.json AND stdout.
+# Output: a JSON report (schemaVersion 1) to <repo>/debug/git/git-pr-merge.json AND stdout.
 # Exit codes: 0 ok | 2 usage | 3 preconditions | 4 push | 5 ci | 6 merge/conflict.
 set -uo pipefail
 
@@ -20,7 +20,7 @@ now_()   { date -u +%Y-%m-%dT%H:%M:%SZ; }
 have_()  { command -v "$1" >/dev/null 2>&1; }
 sleep_() { command sleep "$@"; }
 
-TOOL="git-merge-pr"; SCHEMA=1
+TOOL="git-pr-merge"; SCHEMA=1
 
 # --- accumulated state (emitted by finish) ---------------------------------
 REPO=""; BASE=""; BRANCH=""
@@ -206,7 +206,9 @@ sync_prune() {
     BASE_UPDATED=true
   fi
   git_ fetch -p >/dev/null 2>&1 || true
-  if [ -n "$BRANCH" ] && [ "$BRANCH" != "$BASE" ] && git_ branch -d "$BRANCH" >/dev/null 2>&1; then
+  # Force-delete: after a squash-merge the branch's commits are NOT ancestors of base, so `git
+  # branch -d` would refuse. We only reach here once the PR is confirmed merged, so -D is safe.
+  if [ -n "$BRANCH" ] && [ "$BRANCH" != "$BASE" ] && git_ branch -D "$BRANCH" >/dev/null 2>&1; then
     DEL_LOCAL=true
   fi
 }

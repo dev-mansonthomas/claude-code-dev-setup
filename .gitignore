@@ -16,5 +16,5 @@
 *.pem
 *.key
 
-# host-tool reports (git-merge-pr / git-check write JSON under debug/git/)
+# host-tool reports (git-pr-merge / git-check write JSON under debug/git/)
 debug/

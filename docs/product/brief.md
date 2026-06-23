@@ -1,4 +1,4 @@
-# Brief — host git/GitHub utilities (`git-merge-pr` + `git-check`)
+# Brief — host git/GitHub utilities (`git-pr-merge` + `git-check`)
 
 > One-page brief from `/brainstorm`. Next step: `/spec` the first slice. No code yet.
 
@@ -22,7 +22,7 @@ host↔VM loop (host acts; VM agent learns the result).
 
 ## Goals
 
-- **`git-merge-pr`** (mutating): given an **already-committed** branch (default: current), `gh`/`git`:
+- **`git-pr-merge`** (mutating): given an **already-committed** branch (default: current), `gh`/`git`:
   push → `gh pr create` (title+body args; reuse PR if one exists) → poll CI to green →
   `gh pr merge --squash --delete-branch` → checkout+pull `main` → prune. Writes a JSON report.
 - **`git-check`** (read-only): snapshot of GitHub/remote state — open PRs, recent merged PRs, remote
@@ -30,7 +30,7 @@ host↔VM loop (host acts; VM agent learns the result).
 - **Host-only**, **generic** across any repo under `~/Projects`, POSIX/bash-portable.
 - **JSON-first output** (stable, documented schema) that's also human-skimmable, **written to a
   dedicated gitignored dir** in the repo + path printed; meaningful **exit codes**.
-- **CI red** (`git-merge-pr`): no merge; report names the failing check(s) + the `gh run view …`
+- **CI red** (`git-pr-merge`): no merge; report names the failing check(s) + the `gh run view …`
   command to fetch logs; non-zero exit.
 
 ## Non-goals
@@ -53,7 +53,7 @@ host↔VM loop (host acts; VM agent learns the result).
 
 ## Top risks & open questions
 
-1. **Naming** (you flagged it). Recommend `git-merge-pr` (mutating: push→PR→merge) + `git-check`
+1. **Naming** (you flagged it). Recommend `git-pr-merge` (mutating: push→PR→merge) + `git-check`
    (read-only inspection). `git-check` fits inspection, not the merge tool — confirm, or pick
    `git-merge-to-main` / other for util 1.
 2. **Dedicated output dir** — where + gitignored? Options: reuse `debug/` (last-contact precedent), or
@@ -67,7 +67,7 @@ host↔VM loop (host acts; VM agent learns the result).
 
 ## Rough first slice (smallest worth building first)
 
-**`git-merge-pr` happy path + clean CI-fail.** On the current (already-committed) branch:
+**`git-pr-merge` happy path + clean CI-fail.** On the current (already-committed) branch:
 push → `gh pr create <title> <body>` (reuse if exists) → poll `gh pr checks` → on **green**
 `gh pr merge --squash --delete-branch` → checkout+pull `main` → prune; write
 `{schemaVersion, tool, repo, branch, pr:{number,url}, ci:"success", mergedSha, baseUpdated, branchDeleted}`
@@ -77,5 +77,5 @@ read-only `gh`/`git` calls shaped into the same JSON contract.)
 
 ---
 
-**Next step:** run `/spec` on the first slice (`git-merge-pr` happy path + CI-fail), settling the two
+**Next step:** run `/spec` on the first slice (`git-pr-merge` happy path + CI-fail), settling the two
 naming/dir questions there before implementation.

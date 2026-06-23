@@ -1,35 +1,35 @@
-# Host git/GitHub utilities — `git-merge-pr` & `git-check`
+# Host git/GitHub utilities — `git-pr-merge` & `git-check`
 
 ## Purpose
 
 Two **host-only** CLI utilities that close the host↔VM loop for **solo** repos. The VM Claude
 (`ccvm`) commits a branch but has no credentials to publish it; today the human hand-runs
-push→PR→watch-CI→merge→sync→prune for every change. `git-merge-pr` automates that whole chain;
+push→PR→watch-CI→merge→sync→prune for every change. `git-pr-merge` automates that whole chain;
 `git-check` reports current GitHub/remote state. Both emit a **machine-readable JSON report written
 to `debug/git/<tool>.json`** (in the current repo, on the shared mount) so the VM Claude can `Read`
 it to confirm/inspect — plus the same JSON to stdout for the human.
 
 ## User stories / acceptance criteria
 
-- As the human on the host, I can run `git-merge-pr "<title>" "<body>"` to take the current
+- As the human on the host, I can run `git-pr-merge "<title>" "<body>"` to take the current
   already-committed branch all the way to merged-on-`main`, without hand-running 6 commands.
-- As the VM Claude, I can `Read debug/git/git-merge-pr.json` after the human runs the tool, to learn
+- As the VM Claude, I can `Read debug/git/git-pr-merge.json` after the human runs the tool, to learn
   the PR number/URL, CI result, merged SHA, and whether the branch was pruned.
 - As the human/agent, I can run `git-check` to get one JSON snapshot of open PRs, recent merges,
   remote branches, and recent `main` history.
 
 Testable criteria (`[ ]`):
-- [ ] Given a repo with a committed feature branch checked out and green CI, when `git-merge-pr "t"`
+- [ ] Given a repo with a committed feature branch checked out and green CI, when `git-pr-merge "t"`
       runs, then the PR is squash-merged, the remote+local branch deleted, local `main` fast-forwarded,
-      and `debug/git/git-merge-pr.json` contains `ok:true, ci:"success", pr.number, mergedSha`. Exit 0.
-- [ ] Given the branch's CI fails, when `git-merge-pr` runs, then **no merge happens**, the JSON has
+      and `debug/git/git-pr-merge.json` contains `ok:true, ci:"success", pr.number, mergedSha`. Exit 0.
+- [ ] Given the branch's CI fails, when `git-pr-merge` runs, then **no merge happens**, the JSON has
       `ok:false, ci:"failed", failingChecks:[…], logsCmd`, the message names the failing check, and the
       exit code is non-zero (5).
-- [ ] Given an open PR already exists for the branch, when `git-merge-pr` runs, then it **reuses** that
+- [ ] Given an open PR already exists for the branch, when `git-pr-merge` runs, then it **reuses** that
       PR (no duplicate) and proceeds.
-- [ ] Given the PR was already merged, when `git-merge-pr` re-runs, then it reports `alreadyMerged:true`,
+- [ ] Given the PR was already merged, when `git-pr-merge` re-runs, then it reports `alreadyMerged:true`,
       still syncs/prunes, and exits 0 (idempotent).
-- [ ] Given the current branch IS the base (`main`), when `git-merge-pr` runs, then it refuses with a
+- [ ] Given the current branch IS the base (`main`), when `git-pr-merge` runs, then it refuses with a
       usage error (exit 2) and does not push.
 - [ ] Given `gh` is not authenticated (or git/gh/jq missing), when either tool runs, then it emits
       `ok:false, error.code:"preconditions"` and exits 3 without mutating anything.
@@ -41,7 +41,7 @@ Testable criteria (`[ ]`):
 ## Inputs & outputs
 
 ### Invocation
-- `git-merge-pr [--branch <name>] [--base <name>] [--timeout <sec>] [--poll <sec>] [--no-footer] [--no-stdout] <title> [body]`
+- `git-pr-merge [--branch <name>] [--base <name>] [--timeout <sec>] [--poll <sec>] [--no-footer] [--no-stdout] <title> [body]`
   - `title` required (positional 1); `body` optional (positional 2). `--branch` defaults to the current
     branch; `--base` defaults to the repo's default branch (`gh repo view --json defaultBranchRef`,
     fallback `main`). `--timeout` default 600, `--poll` default 8 (seconds). `--no-footer` skips the
@@ -59,7 +59,7 @@ Testable criteria (`[ ]`):
 ```jsonc
 {
   "schemaVersion": 1,
-  "tool": "git-merge-pr" | "git-check",
+  "tool": "git-pr-merge" | "git-check",
   "ok": true,
   "repo": "owner/name",
   "base": "main",
@@ -69,7 +69,7 @@ Testable criteria (`[ ]`):
 }
 ```
 
-### `git-merge-pr` success fields
+### `git-pr-merge` success fields
 ```jsonc
 {
   "branch": "feat/x",
@@ -106,7 +106,7 @@ On CI failure (`ok:false`): `ci:"failed"`, `failingChecks:[{name,conclusion,deta
 
 ## Behavior & edge cases
 
-**`git-merge-pr` happy path:** preconditions → resolve branch/base → `git push -u` → reuse-or-create PR
+**`git-pr-merge` happy path:** preconditions → resolve branch/base → `git push -u` → reuse-or-create PR
 (append footer) → poll `gh pr checks` until conclusion → on green `gh pr merge --squash --delete-branch`
 → `git checkout <base> && git pull --ff-only` → `git fetch -p` + delete local feature branch → write
 JSON, exit 0.
@@ -151,7 +151,7 @@ Edge cases / handling:
   and (when `ok:false`) `error.code`.
 - **`git-check`:** stub `gh`/`git`, assert the documented shape and that no mutating git/gh command is
   invoked (the stubs fail loudly if `push`/`merge`/`fetch -p`/`branch -d` are called).
-- **Integration (manual, optional):** against a throwaway GitHub repo — real branch → `git-merge-pr` →
+- **Integration (manual, optional):** against a throwaway GitHub repo — real branch → `git-pr-merge` →
   assert PR merged + JSON; then `git-check` shows it under `recentlyMerged`.
 
 ## Dependencies & risks
@@ -165,5 +165,5 @@ Edge cases / handling:
 
 ---
 
-**Next step:** `/plan-feature host-git-utilities` — plan the **first slice** (`git-merge-pr` happy path
+**Next step:** `/plan-feature host-git-utilities` — plan the **first slice** (`git-pr-merge` happy path
 + clean CI-fail + the shared JSON envelope/output), TDD via the stubbed harness; `git-check` follows.
