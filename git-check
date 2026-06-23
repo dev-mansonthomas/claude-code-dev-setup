@@ -56,11 +56,13 @@ emit() {  # emit <ok> <exit> <extra-json>
   payload="$(jq -n \
     --argjson schemaVersion "$SCHEMA" --arg tool "$TOOL" --argjson ok "$ok" \
     --arg repo "$REPO" --arg base "$BASE" --arg generatedAt "$(now_)" \
+    --arg reportPath "debug/git/$TOOL.json" \
     --argjson extra "$extra" --arg errCode "$ERR_CODE" --arg errMsg "$ERR_MSG" \
     '
     def nn: if . == "" then null else . end;
     ({ schemaVersion: $schemaVersion, tool: $tool, ok: $ok,
-       repo: ($repo|nn), base: ($base|nn), generatedAt: $generatedAt } + $extra)
+       repo: ($repo|nn), base: ($base|nn), generatedAt: $generatedAt,
+       reportPath: $reportPath } + $extra)
     | if $ok then . else . + { error: { code: ($errCode|nn), message: ($errMsg|nn) } } end
     ')"
   if [ -n "$root" ] && [ -d "$root" ]; then
