@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Unit tests for git-merge-pr. Sources the script (the run-guard doesn't fire when sourced), then
+# Unit tests for git-pr-merge. Sources the script (the run-guard doesn't fire when sourced), then
 # overrides the git_/gh_/now_/have_/sleep_ seams with stubs and runs main in a subshell ($(...)),
 # so `exit` only exits the subshell and no real git/GitHub call is made.
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
 # shellcheck source=tests/lib-test.sh
 . "$HERE/lib-test.sh"
-# shellcheck source=git-merge-pr
-. "$ROOT/git-merge-pr"
+# shellcheck source=git-pr-merge
+. "$ROOT/git-pr-merge"
 
 TESTTMP="$(mktemp -d)"; CALLS="$TESTTMP/calls.log"
 trap 'rm -rf "$TESTTMP"' EXIT
@@ -91,7 +91,7 @@ assert_jq   "happy -> ci success" "$OUT" '.ci' "success"
 assert_jq   "happy -> pr.number" "$OUT" '.pr.number' "14"
 assert_jq   "happy -> merged" "$OUT" '.merged' "true"
 assert_jq   "happy -> mergedSha" "$OUT" '.mergedSha' "abc1234"
-assert_jq   "happy -> reportPath" "$OUT" '.reportPath' "debug/git/git-merge-pr.json"
+assert_jq   "happy -> reportPath" "$OUT" '.reportPath' "debug/git/git-pr-merge.json"
 assert_call "happy -> created PR" "pr create" "$CALLS"
 assert_call "happy -> merged PR" "pr merge" "$CALLS"
 
@@ -130,10 +130,10 @@ assert_jq   "merge blocked -> merge" "$OUT" '.error.code' "merge"
 assert_eq   "merge blocked -> exit 6" "$CODE" "6"
 
 reset_stubs; STUB_CHECKS='[{"bucket":"pass","name":"x","state":"SUCCESS","link":"x"}]'; run "t"
-assert_eq   "report file written" "$( [ -f "$TESTTMP/debug/git/git-merge-pr.json" ] && echo y )" "y"
+assert_eq   "report file written" "$( [ -f "$TESTTMP/debug/git/git-pr-merge.json" ] && echo y )" "y"
 assert_eq   "gitignore written"   "$( [ -f "$TESTTMP/debug/git/.gitignore" ] && echo y )" "y"
 
 reset_stubs; STUB_CHECKS='[{"bucket":"pass","name":"x","state":"SUCCESS","link":"x"}]'; run --no-stdout "t"
 assert_eq   "--no-stdout -> empty stdout" "$OUT" ""
 
-suite_summary "git-merge-pr"
+suite_summary "git-pr-merge"

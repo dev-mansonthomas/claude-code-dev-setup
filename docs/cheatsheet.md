@@ -31,7 +31,7 @@ claude -p "…"     # headless (scripts/CI)
 ## Ship from the host (after the VM commits)
 | Goal | Command |
 |---|---|
-| Push branch → PR → CI → squash-merge → sync `main` → prune | `git-merge-pr "<title>" "<body>"` |
+| Push branch → PR → CI → squash-merge → sync `main` → prune | `git-pr-merge "<title>" "<body>"` |
 | Read-only GitHub/remote state (open/merged PRs, stale branches, `main` log) | `git-check` |
 
 > Both write JSON to `debug/git/<tool>.json` (git-ignored) — the VM Claude reads it to confirm/inspect. CI red ⇒ no merge. Assumes `/ship` already passed.

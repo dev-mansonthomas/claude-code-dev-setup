@@ -66,7 +66,7 @@ run 50-global-config.sh
 
 # Host git/GitHub helpers on PATH (run from any repo; push/PR/merge are host-only by design).
 if [[ -w /opt/homebrew/bin ]]; then
-  for u in git-merge-pr git-check; do
+  for u in git-pr-merge git-check; do
     ln -sfn "$HERE/$u" "/opt/homebrew/bin/$u" && ok "linked '$u' -> $HERE/$u"
   done
 fi
