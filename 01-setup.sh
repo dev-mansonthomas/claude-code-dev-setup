@@ -64,6 +64,13 @@ run 20-skills.sh
 run 50-global-config.sh
 [[ $WITH_EXTRAS == 1 ]]  && run 60-dev-tools.sh
 
+# Host git/GitHub helpers on PATH (run from any repo; push/PR/merge are host-only by design).
+if [[ -w /opt/homebrew/bin ]]; then
+  for u in git-merge-pr git-check; do
+    ln -sfn "$HERE/$u" "/opt/homebrew/bin/$u" && ok "linked '$u' -> $HERE/$u"
+  done
+fi
+
 step "Done"
 ok "Setup complete."
 cat <<'NEXT'

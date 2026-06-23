@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+# git-check — read-only snapshot of GitHub/remote state for the current repo. NO mutations.
+# Reports open PRs, recently merged PRs, remote branches (+ which are already merged into base =
+# stale), and the recent base-branch log. HOST-ONLY (uses gh creds).
+#
+# Usage: git-check [--limit <N>] [--no-stdout]      (--limit default 8)
+# Output: JSON report (schemaVersion 1) to <repo>/debug/git/git-check.json AND stdout.
+# Exit codes: 0 ok | 3 preconditions.
+set -uo pipefail
+
+# --- overridable seams (the test suite redefines these) --------------------
+git_()  { command git "$@"; }
+gh_()   { command gh "$@"; }
+now_()  { date -u +%Y-%m-%dT%H:%M:%SZ; }
+have_() { command -v "$1" >/dev/null 2>&1; }
+
+TOOL="git-check"; SCHEMA=1
+LIMIT=8; STDOUT=1
+REPO=""; BASE=""; ERR_CODE=""; ERR_MSG=""
+
+parse_args() {
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --limit)     LIMIT="${2:-8}"; shift 2 ;;
+      --no-stdout) STDOUT=0; shift ;;
+      -h|--help)   sed -n '2,9{/^# /p}' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+      *) shift ;;
+    esac
+  done
+}
+
+repo_root() { git_ rev-parse --show-toplevel 2>/dev/null; }
+
+# A ready-to-paste handoff for the project's Claude (ccvm), pointing at the repo-relative report.
+print_handoff() {  # $1 = repo-relative report path
+  local rel="$1"
+  cat >&2 <<EOF
+
+→ GitHub state written to: $rel
+  Paste this to Claude in the project (ccvm):
+  --------------------------------------------------------------------------
+  Read \`$rel\` — a snapshot of this repo's GitHub/remote state. Cross-check it against the
+  local code and branches and tell me what is in order vs what needs action:
+    - does origin/$BASE contain every merged PR — anything missing locally or on GitHub?
+    - any open PR still pending, or a draft to finish?
+    - any stale remote branch (already merged) safe to delete?
+    - does local HEAD / working tree line up with GitHub, or has it diverged?
+  End with a one-line "all clear", or a short numbered to-do if not.
+  --------------------------------------------------------------------------
+EOF
+}
+
+emit() {  # emit <ok> <exit> <extra-json>
+  local ok="$1" code="$2" extra="$3" root payload file
+  root="$(repo_root)"
+  payload="$(jq -n \
+    --argjson schemaVersion "$SCHEMA" --arg tool "$TOOL" --argjson ok "$ok" \
+    --arg repo "$REPO" --arg base "$BASE" --arg generatedAt "$(now_)" \
+    --argjson extra "$extra" --arg errCode "$ERR_CODE" --arg errMsg "$ERR_MSG" \
+    '
+    def nn: if . == "" then null else . end;
+    ({ schemaVersion: $schemaVersion, tool: $tool, ok: $ok,
+       repo: ($repo|nn), base: ($base|nn), generatedAt: $generatedAt } + $extra)
+    | if $ok then . else . + { error: { code: ($errCode|nn), message: ($errMsg|nn) } } end
+    ')"
+  if [ -n "$root" ] && [ -d "$root" ]; then
+    mkdir -p "$root/debug/git"
+    printf '*\n!.gitignore\n' > "$root/debug/git/.gitignore"
+    file="$root/debug/git/$TOOL.json"
+    printf '%s\n' "$payload" > "$file"
+  fi
+  [ "$STDOUT" = 1 ] && printf '%s\n' "$payload"
+  if [ "$ok" = true ] && [ -n "$root" ] && [ -d "$root" ]; then
+    print_handoff "debug/git/$TOOL.json"
+  fi
+  exit "$code"
+}
+
+fail() { ERR_CODE="$1"; ERR_MSG="$2"; emit false 3 '{}'; }
+
+main() {
+  parse_args "$@"
+  have_ jq || { printf '{"schemaVersion":1,"tool":"%s","ok":false,"error":{"code":"preconditions","message":"jq not found"}}\n' "$TOOL"; exit 3; }
+  have_ git || fail preconditions "git not found"
+  have_ gh  || fail preconditions "gh not found"
+  git_ rev-parse --is-inside-work-tree >/dev/null 2>&1 || fail preconditions "not a git repository"
+  gh_ auth status >/dev/null 2>&1 || fail preconditions "gh not authenticated"
+
+  REPO="$(gh_ repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo "")"
+  BASE="$(gh_ repo view --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null || echo "")"
+  [ -z "$BASE" ] && BASE=main
+
+  local open merged remotes merged_set mainlog extra
+  open="$(gh_ pr list --state open --json number,title,headRefName,isDraft,url 2>/dev/null || echo '[]')"
+  merged="$(gh_ pr list --state merged --limit "$LIMIT" --json number,title,headRefName,mergedAt,url 2>/dev/null || echo '[]')"
+
+  git_ fetch -q origin 2>/dev/null || true
+  remotes="$(git_ ls-remote --heads origin 2>/dev/null | sed 's#.*refs/heads/##' || echo "")"
+  merged_set="$(git_ branch -r --merged "origin/$BASE" 2>/dev/null | sed 's#^[* ]*##; s#^origin/##' || echo "")"
+  mainlog="$(git_ log --oneline -"$LIMIT" "origin/$BASE" 2>/dev/null || echo "")"
+
+  # Shape everything into JSON in one pass (remotes/mergedSet/mainlog are newline-separated text).
+  extra="$(jq -n \
+    --argjson openPRs "$open" \
+    --argjson recentlyMerged "$merged" \
+    --arg remotes "$remotes" \
+    --arg mergedSet "$merged_set" \
+    --arg mainlog "$mainlog" \
+    --arg base "$BASE" \
+    '
+    ($mergedSet | split("\n") | map(select(length > 0))) as $merged
+    | ($remotes | split("\n") | map(select(length > 0))
+        | map(. as $n | { name: $n, merged: ($merged | index($n) != null) })) as $rb
+    | { openPRs: $openPRs,
+        recentlyMerged: $recentlyMerged,
+        remoteBranches: $rb,
+        staleBranches: [ $rb[] | select(.merged and .name != $base) | .name ],
+        mainLog: ($mainlog | split("\n") | map(select(length > 0))
+                  | map({ sha: (split(" ")[0]), subject: (sub("^[^ ]+ +"; "")) })) }
+    ')"
+
+  emit true 0 "$extra"
+}
+
+[ "${BASH_SOURCE[0]}" = "${0}" ] && main "$@"

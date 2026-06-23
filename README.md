@@ -80,6 +80,19 @@ So a change flows: **build + commit in the VM → you `git push` / PR / merge on
 `./deploy/gcp-deploy.sh` on the host.** The credential boundary is never crossed. Details:
 [docs/isolation.md](docs/isolation.md).
 
+### Shipping what the VM committed: `git-merge-pr` & `git-check`
+
+Two **host** commands (installed on your `PATH` by `./01-setup.sh`) automate the push→PR→merge dance
+for solo repos. After Claude commits a branch in the VM, run on the host:
+```bash
+git-merge-pr "<PR title>" "<PR body>"   # push branch → open/reuse PR → wait for CI → squash-merge --delete-branch → fast-forward main → prune
+git-check                               # read-only snapshot: open PRs, recent merges, stale remote branches, recent main log
+```
+Both write a JSON report to `debug/git/<tool>.json` (git-ignored) that the **VM Claude can read back**
+to confirm the merge / inspect state. **CI red ⇒ no merge** — the report names the failing check and
+the `gh run view …` logs command. They do **not** run a quality gate (`/ship` is assumed already
+passed) and never force-push. Spec: [docs/specs/host-git-utilities.md](docs/specs/host-git-utilities.md).
+
 ---
 
 ## What you need first (prerequisites)
@@ -204,6 +217,11 @@ newline. Fix it once **on the host terminal**:
   host** (not via `ccvm`) — it writes the keybinding to the editor's config, which then applies over SSH.
 - **Native, no setup needed:** WezTerm, Ghostty, Kitty, Warp.
 
+**Completion bell.** To make Claude *beep* when it finishes a turn or needs input, the VM sets
+`preferredNotifChannel: "terminal_bell"` (a BEL byte that crosses SSH); turn the sound on, on the
+host, in iTerm2 → Settings (`⌘,`) → Profiles → your profile → **Terminal** → uncheck **"Silence
+bell"**. A VM-side sound hook can't help — the VM has no audio; only the bell crosses SSH.
+
 ## Network firewall (planned)
 
 > **Status: not yet implemented — VM egress is open today.** The VM needs outbound internet to
@@ -327,6 +345,7 @@ Maven: point the local repo at a writable path — `mvn -Dmaven.repo.local=.m2 �
 | `04-vm-auth.sh` | authenticate the VM: `claude setup-token` → host-only token file (`make vm-auth`) |
 | `05-new-project.sh` | scaffold a new project from `project-template/` (also `make new-project`) |
 | `ccvm` | enter the VM at a project + open VS Code (the default isolated workflow) |
+| `git-merge-pr` / `git-check` | host: push→PR→CI→squash-merge a committed branch / read-only GitHub state — JSON to `debug/git/` |
 | `sync-project.sh` | pull updated kit infra files into an existing project (also `make sync-project`) |
 | `grafana-up.sh` / `grafana-down.sh` | start / stop the Grafana dashboards — drives the OTEL/Grafana stack **inside the Colima VM** from the host + opens the browser |
 | `scripts/` | the individual, re-runnable setup steps |

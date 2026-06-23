@@ -26,7 +26,12 @@ doctor:
 ## lint: shellcheck all shell scripts
 .PHONY: lint
 lint:
-	@shellcheck -x --source-path=SCRIPTDIR 01-setup.sh 02-doctor.sh 03-vm-up.sh 04-vm-auth.sh 05-new-project.sh sync-project.sh grafana-up.sh grafana-down.sh ccvm scripts/*.sh claude-config/hooks/*.sh project-template/.githooks/pre-commit && echo "shellcheck: clean"
+	@shellcheck -x --source-path=SCRIPTDIR 01-setup.sh 02-doctor.sh 03-vm-up.sh 04-vm-auth.sh 05-new-project.sh sync-project.sh grafana-up.sh grafana-down.sh ccvm git-merge-pr git-check scripts/*.sh tests/*.sh claude-config/hooks/*.sh project-template/.githooks/pre-commit && echo "shellcheck: clean"
+
+## test: run the host-git-utilities unit tests (stubbed gh/git, no network)
+.PHONY: test
+test:
+	@bash tests/test-git-merge-pr.sh && bash tests/test-git-check.sh
 
 ## new-project: scaffold a new project from project-template/ (NAME=... [DEST=...])
 .PHONY: new-project
