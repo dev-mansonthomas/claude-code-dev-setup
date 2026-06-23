@@ -31,6 +31,7 @@ git_() {
     push)      [ "${STUB_PUSH_OK:-1}" = 1 ] ;;
     checkout|pull|fetch) return 0 ;;
     branch)    return 0 ;;
+    show-ref)  return 1 ;;   # branch absent after merge (gh --delete-branch removed it)
     *) return 0 ;;
   esac
 }
@@ -92,6 +93,7 @@ assert_jq   "happy -> pr.number" "$OUT" '.pr.number' "14"
 assert_jq   "happy -> merged" "$OUT" '.merged' "true"
 assert_jq   "happy -> mergedSha" "$OUT" '.mergedSha' "abc1234"
 assert_jq   "happy -> reportPath" "$OUT" '.reportPath' "debug/git/git-pr-merge.json"
+assert_jq   "happy -> local branch pruned" "$OUT" '.branchDeleted.local' "true"
 assert_call "happy -> created PR" "pr create" "$CALLS"
 assert_call "happy -> merged PR" "pr merge" "$CALLS"
 
