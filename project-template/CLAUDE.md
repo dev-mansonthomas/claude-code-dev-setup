@@ -40,6 +40,11 @@ TODO
   **once** via the provider default so all resources inherit it — GCP
   `provider "google" { default_labels = { owner = var.owner } }`, AWS `default_tags` — don't
   label resource-by-resource.
+- **Shipping a branch (host-only).** Pushing/PR/merge happen on the host. When a branch is ready,
+  output the host command for the user: **`git-merge-pr "<conventional title>" "<body>"`** (push → PR
+  → wait CI → squash-merge → fast-forward main → prune), then **`Read debug/git/git-merge-pr.json`**
+  to confirm. GitHub/remote state on demand: **`git-check`** → `debug/git/git-check.json`. (Mechanism:
+  global `~/.claude/CLAUDE.md` → *Isolated VM*.)
 
 ## Redis (if used)
 - Connection via env var (never hard-code). Local dev DB: TODO.

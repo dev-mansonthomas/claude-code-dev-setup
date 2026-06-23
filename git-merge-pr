@@ -64,6 +64,7 @@ finish() {
     --argjson ok "$ok" \
     --arg repo "$REPO" --arg base "$BASE" --arg branch "$BRANCH" \
     --arg generatedAt "$(now_)" \
+    --arg reportPath "debug/git/$TOOL.json" \
     --argjson pushed "$PUSHED" --argjson dirty "$DIRTY" \
     --arg prNumber "$PR_NUMBER" --arg prUrl "$PR_URL" --argjson prReused "$PR_REUSED" \
     --arg ci "$CI" --argjson checks "$CHECKS" --argjson failing "$FAILING" --arg logsCmd "$LOGS_CMD" \
@@ -75,6 +76,7 @@ finish() {
     {
       schemaVersion: $schemaVersion, tool: $tool, ok: $ok,
       repo: ($repo|nn), base: ($base|nn), branch: ($branch|nn), generatedAt: $generatedAt,
+      reportPath: $reportPath,
       pushed: $pushed, workingTreeDirty: $dirty,
       pr: { number: ($prNumber | if . == "" then null else tonumber end), url: ($prUrl|nn), reused: $prReused },
       ci: ($ci|nn), checks: $checks, failingChecks: $failing, logsCmd: ($logsCmd|nn),

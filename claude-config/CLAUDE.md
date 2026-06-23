@@ -96,9 +96,13 @@ from the host.** When driving a project toward deployment:
   infra; split into multiple images only when parts scale or deploy independently. Keep the
   `Dockerfile`(s) in the project's `deploy/` folder. `/ship` builds the image as a gate before shipping.
 - **Git — local only.** Branch, commit, rebase in the VM. **Never** push, open PRs, or merge from
-  the VM. When ready, **print the exact commands** (`git push`, `gh pr create`, `gh pr merge`) for
-  the user to run on the **host**, which holds the GitHub creds. The repo is on a shared mount, so
-  the host already sees your commits — it just runs them.
+  the VM. When ready, tell the user to run **`git-merge-pr "<title>" "<body>"`** on the **host** — a
+  kit tool (on `PATH`) that, for the current branch, pushes → opens/reuses the PR → waits for CI →
+  squash-merges into the base → fast-forwards `main` → prunes. It writes `debug/git/git-merge-pr.json`
+  (a shared-mount path) that you then **`Read`** to confirm the merge / handle a CI failure. For a
+  read-only view of GitHub vs local state, the user runs **`git-check`** → `debug/git/git-check.json`.
+  Fallback only if those aren't installed: print the raw `git push` / `gh pr create` / `gh pr merge`.
+  The repo is on a shared mount, so the host already sees your commits — it just runs them.
 - **Deploy — generate a host script; never deploy from the VM.** Produce `deploy/gcp-deploy.sh`
   (idempotent, host-run) plus `deploy/Dockerfile` and `deploy/deploy.env.example`, then **tell the
   user to run `./deploy/gcp-deploy.sh` on the host**. That script does the credentialed work:

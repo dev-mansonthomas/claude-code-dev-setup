@@ -91,6 +91,7 @@ assert_jq   "happy -> ci success" "$OUT" '.ci' "success"
 assert_jq   "happy -> pr.number" "$OUT" '.pr.number' "14"
 assert_jq   "happy -> merged" "$OUT" '.merged' "true"
 assert_jq   "happy -> mergedSha" "$OUT" '.mergedSha' "abc1234"
+assert_jq   "happy -> reportPath" "$OUT" '.reportPath' "debug/git/git-merge-pr.json"
 assert_call "happy -> created PR" "pr create" "$CALLS"
 assert_call "happy -> merged PR" "pr merge" "$CALLS"
 
