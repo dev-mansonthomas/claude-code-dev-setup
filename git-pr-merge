@@ -206,10 +206,12 @@ sync_prune() {
     BASE_UPDATED=true
   fi
   git_ fetch -p >/dev/null 2>&1 || true
-  # Force-delete: after a squash-merge the branch's commits are NOT ancestors of base, so `git
-  # branch -d` would refuse. We only reach here once the PR is confirmed merged, so -D is safe.
-  if [ -n "$BRANCH" ] && [ "$BRANCH" != "$BASE" ] && git_ branch -D "$BRANCH" >/dev/null 2>&1; then
-    DEL_LOCAL=true
+  # `gh pr merge --delete-branch` already removes the local branch (and checks out base); the -D is a
+  # fallback if it didn't (after a squash-merge plain `git branch -d` would refuse). Report on the
+  # ACTUAL state — the branch being gone — not on which command deleted it.
+  if [ -n "$BRANCH" ] && [ "$BRANCH" != "$BASE" ]; then
+    git_ branch -D "$BRANCH" >/dev/null 2>&1 || true
+    git_ show-ref --verify --quiet "refs/heads/$BRANCH" || DEL_LOCAL=true
   fi
 }
 
