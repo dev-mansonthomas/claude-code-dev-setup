@@ -49,6 +49,41 @@ and caveats in **[docs/isolation.md](docs/isolation.md)**.
 
 ---
 
+## Why a VM, not just Claude Code's sandbox?
+
+Claude Code's built-in **sandbox** (`sandbox-exec` / `bubblewrap`) confines individual Bash commands —
+low overhead, but it runs **as your host user**: a *policy* boundary around commands, not a wall around
+the environment. This kit runs everything in a **separate-kernel VM that holds no credentials** — a
+*structural* boundary — and bundles the dev environment + workflow on top.
+
+| | Claude Code sandbox | This kit (VM) |
+|---|---|---|
+| **Credential safety** (SSH · keychain · cloud tokens · cookies) | policy deny-list — secrets still on disk | **structural** — they don't exist in the VM |
+| **Blast radius if compromised** | your host account | a **disposable** VM (`nuke → ./03-vm-up.sh`) |
+| **Hands-off autonomy** (auto-run commands + edits) | N/A | **`--permission-mode auto`** — a classifier blocks only destructive ops |
+| **Docker / builds / integration tests** (testcontainers) | N/A — can't run in the OS sandbox | **runs inside the VM** (Docker = Colima) |
+| **Reproducible dev env** (skills · MCP · Node · Playwright + browsers) | N/A — it's just a setting | **one command**, identical on every Mac |
+| **Workflow & glue** (`/brainstorm`→`/ship` · `git-pr-merge` · secret-guard · dual-audience docs) | N/A | **included** |
+
+> Not either/or — the kit keeps a **host tier** for trivial, trusted tasks (turn on CC's sandbox there
+> if you like); the VM is for real work on untrusted code.
+
+### The friction it adds — and how it's removed
+
+A VM reached over SSH *could* be annoying. Each rough edge has a deliberate fix, so day-to-day it feels
+like working locally:
+
+| Friction | Removed by |
+|---|---|
+| Per-action permission prompts | starts in **`--permission-mode auto`** (the classifier still gates `rm -rf`, `terraform destroy`) |
+| No creds in the VM → push/PR/merge is a 6-command dance | **`git-pr-merge "<title>" "<body>"`** on the host: push → PR → CI → squash-merge → prune in one shot, and writes `debug/git/*.json` the VM Claude reads back |
+| `Shift+Enter` submits (`/terminal-setup` can't run over SSH) | printed after `vm-up`: `Ctrl+J` (any terminal), or a one-time iTerm2 key mapping |
+| You don't notice when Claude finishes | a **terminal bell** crosses SSH (`preferredNotifChannel`) |
+| "Edit on host, run in VM" = sync hell? | `~/Projects` is a **shared mount** (virtiofs) — edit in your own editor; Claude/builds/tests run in the VM, same files |
+| VM upkeep | **always-on, RAM-aware** (8–12 GB), auto-starts at login — you don't manage it |
+
+---
+
 ## The workflow — build in the VM, ship & deploy from the host
 
 The daily loop (qualify before you code):
