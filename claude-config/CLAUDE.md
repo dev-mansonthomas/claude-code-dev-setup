@@ -96,8 +96,9 @@ from the host.** When driving a project toward deployment:
   infra; split into multiple images only when parts scale or deploy independently. Keep the
   `Dockerfile`(s) in the project's `deploy/` folder. `/ship` builds the image as a gate before shipping.
 - **Git — local only.** Branch, commit, rebase in the VM. **Never** push, open PRs, or merge from
-  the VM. When ready, tell the user to run **`git-pr-merge "<title>" "<body>"`** on the **host** — a
-  kit tool (on `PATH`) that, for the current branch, pushes → opens/reuses the PR → waits for CI →
+  the VM. When ready, tell the user to run **`git-pr-merge --branch <branch> "<title>" "<body>"`** on
+  the **host** — name the branch explicitly (you know it; the default is the host's current HEAD,
+  which may differ). It's a kit tool (on `PATH`) that pushes → opens/reuses the PR → waits for CI →
   squash-merges into the base → fast-forwards `main` → prunes. It writes `debug/git/git-pr-merge.json`
   (a shared-mount path) that you then **`Read`** to confirm the merge / handle a CI failure. For a
   read-only view of GitHub vs local state, the user runs **`git-check`** → `debug/git/git-check.json`.
