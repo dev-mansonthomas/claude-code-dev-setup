@@ -317,6 +317,49 @@ scaffold already includes a project `CLAUDE.md`, human `README.md`, the
 `docs/` structure (PRD, specs, architecture, ADRs), `.gitignore`,
 `.gitleaks.toml`, and CI workflows (tests, secret scan, dependency audit).
 
+## Migrating an existing project from Augment (or another agent)
+
+Coming from Augment Code/Intent (or any agent with cloud-side memory)? Its "memories", internal task
+list, and accumulated understanding live in **its** cloud — Claude Code can't read them, and they
+vanish when access ends. So migrate in **two phases** (full guide, incl. Phase 2:
+[docs/migration-from-augment.md](docs/migration-from-augment.md)).
+
+**Phase 1 — paste this into Augment** (select **Claude Opus** there), at the project root. It dumps
+everything it knows — including a draft PRD / architecture / features (the seed of your brief & spec)
+— into a `handover/` folder you then commit:
+
+```text
+You are handing this project off to another AI coding assistant, and your access to this workspace
+is ending soon — your memories and internal task state will be permanently lost. Capture EVERYTHING
+you know that a fresh assistant could NOT reconstruct from the code alone, into files in this repo,
+so the handover is lossless. Be exhaustive and HONEST about status (never mark "done" what isn't).
+No secrets. Put everything under a new handover/ folder.
+
+Write:
+1. handover/STATE.md — the perishable stuff first: your current task list / plan in progress
+   (done / in-progress / next), what you were in the middle of and the immediate next step, and any
+   open questions or blockers you were tracking.
+2. handover/MEMORY.md — everything in YOUR memory that isn't obvious from the code: decisions and
+   their rationale, constraints, agreed conventions, gotchas, dead-ends already ruled out, domain
+   knowledge, owners/stakeholders, "why it is the way it is".
+3. handover/DECISIONS.md — key technical decisions (datastore, frameworks, infra, notable libraries)
+   in ADR style: context → decision → consequences.
+4. A first-draft doc set the next assistant will verify & refine:
+   - handover/PRD.md — problem, users, scope (in / out);
+   - handover/ARCHITECTURE.md — components, data flow, data model, services, external dependencies;
+   - handover/FEATURES.md — each significant feature: what it does, inputs/outputs, current status,
+     and which tests cover it.
+5. handover/GUIDELINES.md — your active guidelines/rules for this project, including anything from
+   .augment-guidelines or your rules files.
+
+When unsure, say so explicitly rather than guessing.
+```
+
+**Phase 2 — in `ccvm <project>`**: paste the Phase 2 prompt from the guide. Claude Code treats
+`handover/` as a *source, not the truth* — it re-grounds every claim against the real code + git,
+adapts to this kit's conventions, and writes the verified `CLAUDE.md` + `docs/` (PRD, specs,
+architecture, ADRs). Delete `handover/` once absorbed.
+
 ## Per-project `.claude/settings.json` recipes (by stack)
 
 A project's `.claude/settings.json` **merges with your global** `~/.claude/settings.json`

@@ -29,19 +29,55 @@ if has zsh && [ "$(getent passwd "$(id -un)" | cut -d: -f7)" != "$(command -v zs
   if sudo chsh -s "$(command -v zsh)" "$(id -un)" 2>/dev/null; then ok "zsh is the VM login shell"; else warn "could not chsh to zsh (cosmetic)."; fi
 fi
 
+# --- git identity: inherit the host's by default (so VM commits aren't anonymous) ----------
+# 03-vm-up.sh passes GIT_USER_NAME/GIT_USER_EMAIL from the host's global git config. We set them in
+# the VM only if unset, so a deliberate VM-side identity is never clobbered.
+if has git; then
+  if [ -n "${GIT_USER_NAME:-}" ] && [ -z "$(git config --global user.name 2>/dev/null)" ]; then
+    git config --global user.name "$GIT_USER_NAME"
+  fi
+  if [ -n "${GIT_USER_EMAIL:-}" ] && [ -z "$(git config --global user.email 2>/dev/null)" ]; then
+    git config --global user.email "$GIT_USER_EMAIL"
+  fi
+  un="$(git config --global user.name 2>/dev/null)"
+  if [ -n "$un" ]; then
+    ok "git identity: $un <$(git config --global user.email 2>/dev/null)>"
+  else
+    warn "git identity still unset (host had none) — set it in the VM: git config --global user.name/email"
+  fi
+fi
+
 # --- network / debug tooling (all CLI, text output the agent can read) -----
 # DNS (dig/host/nslookup), port reachability (telnet, nc), path+latency (ping/traceroute/mtr),
 # packet capture (tcpdump, and tshark = Wireshark's CLI — the closest thing the agent can use;
 # capture needs sudo/CAP_NET_RAW, which `lima` has), listening sockets (ss/netstat/lsof), a direct
-# Redis probe (redis-cli), TLS/cert inspection (openssl). We still SKIP socat — like bubblewrap it
-# makes Claude Code re-enable its Bash sandbox. DEBIAN_FRONTEND=noninteractive silences tshark's
-# "allow non-root capture?" debconf prompt (default no; use `sudo tshark`/`sudo tcpdump`).
+# TLS/cert inspection (openssl). (redis-cli comes from the official Redis repo below — 8.x.) We still
+# SKIP socat — like bubblewrap it makes Claude Code re-enable its Bash sandbox.
+# DEBIAN_FRONTEND=noninteractive silences tshark's "allow non-root capture?" debconf prompt
+# (default no; use `sudo tshark`/`sudo tcpdump`).
 if has apt-get; then
-  say "installing network/debug tools (dig, telnet, nc, tcpdump, tshark, redis-cli, …)…"
+  say "installing network/debug tools (dig, telnet, nc, tcpdump, tshark, …)…"
   sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
     dnsutils telnet netcat-openbsd iputils-ping traceroute mtr-tiny \
-    tcpdump tshark iproute2 net-tools lsof redis-tools openssl \
+    tcpdump tshark iproute2 net-tools lsof openssl \
     >/dev/null 2>&1 || warn "some network/debug tools failed to install"
+fi
+
+# --- redis-cli 8.x (official Redis apt repo; Ubuntu ships only 7.0.x) ----------------------
+# Projects target Redis 8.x (Search/JSON/Functions) — keep the CLI current. CLI only; the SERVER
+# always runs in Docker per project. Skips if 8.x is already present.
+if has apt-get && ! redis-cli --version 2>/dev/null | grep -q ' 8\.'; then
+  say "installing redis-cli 8.x (official Redis apt repo)…"
+  codename="$(awk -F= '/^VERSION_CODENAME=/{print $2}' /etc/os-release 2>/dev/null)"
+  curl -fsSL https://packages.redis.io/gpg 2>/dev/null | sudo gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg 2>/dev/null
+  echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb ${codename:-noble} main" \
+    | sudo tee /etc/apt/sources.list.d/redis.list >/dev/null
+  sudo apt-get update -qq >/dev/null 2>&1 || true
+  if sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq redis-tools >/dev/null 2>&1; then
+    ok "redis-cli $(redis-cli --version 2>/dev/null | awk '{print $2}')"
+  else
+    warn "redis-cli 8.x install failed (kept whatever was there)."
+  fi
 fi
 
 # --- extra debug tooling (general-purpose, CLI) ----------------------------
@@ -131,6 +167,39 @@ if has npx; then
     echo 'export CHROME_BIN=/usr/local/bin/chrome' | sudo tee /etc/profile.d/chrome-bin.sh >/dev/null
     ok "CHROME_BIN -> Playwright Chromium (Angular Karma / ng test)"
   fi
+fi
+
+# --- JVM toolchain: OpenJDK 21 + Maven 3.9 (Spring / Jedis / Java projects) -----------------
+# Ubuntu ships OpenJDK 21 (= Java 21, parity with projects' Temurin-21 image) but only Maven 3.8.7,
+# so Maven 3.9.x comes from the Apache binary. JAVA_HOME is exported (login shells) for Maven/Gradle.
+if has apt-get && ! has java; then
+  say "installing OpenJDK 21…"
+  sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq openjdk-21-jdk >/dev/null 2>&1 || warn "openjdk-21-jdk install failed"
+fi
+if has java; then
+  jh="$(dirname "$(dirname "$(readlink -f "$(command -v java)")")")"
+  echo "export JAVA_HOME=$jh" | sudo tee /etc/profile.d/jdk.sh >/dev/null
+fi
+if has java && ! has mvn; then
+  say "installing Maven 3.9 (Apache binary; apt only has 3.8.x)…"
+  mver="3.9.16"; mt="$(mktemp -d)"
+  # archive.apache.org keeps every release (dlcdn drops old ones -> 404 once a 3.9.x rotates).
+  if curl -fsSL "https://archive.apache.org/dist/maven/maven-3/${mver}/binaries/apache-maven-${mver}-bin.tar.gz" -o "$mt/m.tgz" 2>/dev/null \
+     && sudo tar -xzf "$mt/m.tgz" -C /opt 2>/dev/null \
+     && sudo ln -sfn "/opt/apache-maven-${mver}/bin/mvn" /usr/local/bin/mvn; then
+    ok "maven $mver"
+  else
+    warn "Maven 3.9 install failed (fallback: sudo apt-get install -y maven → 3.8.x)."
+  fi
+  rm -rf "$mt"
+fi
+
+# --- Lua tooling: luacheck (lint Redis Functions / Lua scripts) -----------------------------
+# lua-language-server / stylua aren't in apt; luacheck (the standard Lua linter) installs via luarocks.
+if has apt-get && ! has luacheck; then
+  say "installing Lua + luacheck (linter for Redis Lua / Functions)…"
+  sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq lua5.4 luarocks >/dev/null 2>&1 || warn "lua/luarocks install failed"
+  sudo luarocks install luacheck >/dev/null 2>&1 || warn "luacheck install failed"
 fi
 
 # --- skills + global config + MCP: reuse the mounted kit (OS-agnostic steps) -----

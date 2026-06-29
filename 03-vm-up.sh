@@ -37,8 +37,12 @@ fi
 if docker info >/dev/null 2>&1; then ok "Docker (in VM) reachable."; else warn "Docker not reachable yet (give it a few seconds)."; fi
 
 # Provision the VM. The kit lives under ~/Projects, so it's mounted at the same path inside.
+# Pass the HOST's git identity so VM commits aren't anonymous — the VM inherits it by default.
 info "Provisioning the VM (Claude Code, tools, skills, config, monitoring)..."
-colima ssh -- bash "$HERE/scripts/vm-provision.sh" "$HERE" || warn "Provisioning reported issues — review the output above."
+host_git_name="$(git config --global user.name 2>/dev/null || true)"
+host_git_email="$(git config --global user.email 2>/dev/null || true)"
+colima ssh -- env "GIT_USER_NAME=$host_git_name" "GIT_USER_EMAIL=$host_git_email" \
+  bash "$HERE/scripts/vm-provision.sh" "$HERE" || warn "Provisioning reported issues — review the output above."
 
 # `ccvm` on PATH for the default workflow.
 if [[ -w /opt/homebrew/bin ]]; then

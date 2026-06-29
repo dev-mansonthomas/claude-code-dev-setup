@@ -126,3 +126,68 @@ Finally: run the build/tests you documented and paste the REAL output, then summ
 
 After this, the normal loop applies — `/brainstorm → /spec → /plan-feature → … → /ship → deploy`,
 with `/doc-sync` keeping docs in step with the code.
+
+---
+
+## No access to the original assistant? — code-only recovery (single phase)
+
+If access to the original agent is already gone (Augment subscription ended, etc.), **Phase 1 is
+impossible** — there's no memory to dump. Skip the two phases above and reconstruct **from the code +
+git history alone**, in one pass inside `ccvm <project>`. The honest cost: the *why* (decisions,
+rationale, dead-ends, in-flight intent) that lived only in the old agent's head is **unrecoverable** —
+this prompt infers what it can, marks every inference, and lists the gaps for you.
+
+Paste into Claude Code at the project root:
+
+```text
+This project was built with another AI agent whose memory and notes are gone — there is NO handover/
+folder, only the code, the git history, and whatever docs/config are already in the repo. Reconstruct
+this kit's agent-doc structure from the CODE ALONE, then review it. Be HONEST: the rationale, the
+decisions, the dead-ends and the in-flight intent that lived only in the old agent's head are LOST —
+infer conservatively, tag every inference "(inferred — verify)", and collect what only I can answer.
+
+1. UNDERSTAND (read-only first). Detect the stack(s) and layout; map dir -> responsibility; infer the
+   product's purpose and features from the code, the tests, the README, and the git history (commits,
+   branches, tags). Then RUN the install/build/test commands to confirm how it actually runs — paste
+   the REAL output.
+
+2. TOOLCHAIN INVENTORY — this is the to-do I'll act on to update the VM. Detect every runtime/tool
+   this project needs and its REQUIRED version, from: .nvmrc / .node-version / package.json "engines";
+   pyproject.toml "requires-python" / .python-version; go.mod (go directive); pom.xml / build.gradle
+   (Java version, toolchain); composer.json "require.php"; *.tf "required_version" + required_providers;
+   .tool-versions / .sdkmanrc / rust-toolchain.toml; Dockerfile(s) (base image + apt installs); CI
+   workflows; README prerequisites. For each, check what THIS VM already provides (you are inside it —
+   `command -v <tool>` / `<tool> --version`) and classify: present & compatible / present but WRONG
+   version / ABSENT. Flag where different projects of mine would need DIFFERENT versions of the same
+   runtime (that needs a per-project version manager, not just an install).
+
+3. WRITE the kit's docs, grounded only in what you verified. Reference the global ~/.claude/CLAUDE.md
+   security & workflow model — do NOT restate it.
+   - CLAUDE.md — entry map: what it is, the stack, the EXACT verified install/build/run/test commands,
+     the module map (dir -> responsibility), conventions, gotchas.
+   - docs/product/PRD.md — problem, users, scope (inferred from code/tests; mark the assumptions).
+   - docs/architecture/overview.md — components, data flow, data model, external deps (mermaid if useful).
+   - docs/specs/<feature>.md per significant feature — inputs, outputs, edge cases, acceptance
+     criteria, and which tests cover it.
+   - docs/adr/NNNN-title.md — decisions you can INFER from the code (datastore, framework, infra) in
+     ADR style, each clearly tagged "(reconstructed — verify)".
+   - docs/TODO.md — from TODO/FIXME/HACK comments + failing/skipped tests + unfinished branches.
+   - docs/migration-status.md — what you recovered, what is inferred, what is UNRECOVERABLE (the lost
+     "why"), the recommended next 3 actions, AND a "## Toolchain & VM gaps" section: a table
+     [ tool | required version (+ where detected) | this VM has | verdict OK / wrong-version / MISSING ]
+     plus a copy-pasteable "VM provisioning request" — the exact runtimes/versions to add to the VM,
+     flagging any that need a per-project version manager because my projects diverge.
+
+4. REVIEW the existing code (there is no prior review context). Run /code-review, then
+   /security-review. Record findings in docs/TODO.md, severity-tagged. Do NOT fix yet — just surface.
+
+5. SYNC. Run /doc-sync so the human README and the agent docs match the code.
+
+Finally: summarize, **print the "VM provisioning request" block verbatim** (so I can paste it straight
+back to you to update the VM), then ask me up to 5 questions — only where neither the code nor the git
+history answers (the gaps that genuinely need the original author). Do NOT commit.
+```
+
+Then **Validate & finish** as above: review the generated docs (you still know the project), confirm
+the documented build/test works, then commit on a branch and push/PR/merge from the host
+(`git-pr-merge "docs: reconstruct agent docs from code"`).
