@@ -55,16 +55,20 @@ fi
 
 # Always-on: auto-start Colima at login via a LaunchAgent (best-effort).
 install_launch_agent() {
-  local plist="$HOME/Library/LaunchAgents/com.${USER}.colima.plist" bin
-  bin="$(command -v colima)"
+  local plist="$HOME/Library/LaunchAgents/com.${USER}.colima.plist" bin bindir
+  bin="$(command -v colima)"; bindir="$(dirname "$bin")"
   mkdir -p "$HOME/Library/LaunchAgents"
+  # launchd runs with a MINIMAL PATH; colima needs limactl (in $bindir, e.g. /opt/homebrew/bin) on
+  # PATH or `colima start` fails at login (exit 1). Set PATH explicitly; log stderr for debugging.
   cat > "$plist" <<PL
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
   <key>Label</key><string>com.${USER}.colima</string>
   <key>ProgramArguments</key><array><string>${bin}</string><string>start</string></array>
+  <key>EnvironmentVariables</key><dict><key>PATH</key><string>${bindir}:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string></dict>
   <key>RunAtLoad</key><true/>
+  <key>StandardErrorPath</key><string>/tmp/colima-launchagent.log</string>
 </dict></plist>
 PL
   launchctl unload "$plist" 2>/dev/null || true

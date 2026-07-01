@@ -46,7 +46,10 @@ else
 fi
 
 # --- Playwright ------------------------------------------------------------
-add_mcp playwright npx -y @playwright/mcp@latest
+# --browser chromium: use Playwright's bundled Chromium (installed by vm-provision). WITHOUT this the
+# MCP defaults to the "chrome" channel (branded Google Chrome), which has NO arm64 Linux build → the
+# MCP fails to launch a browser in the VM. (Re-run needs a fresh register; add_mcp skips if it exists.)
+add_mcp playwright npx -y @playwright/mcp@latest --browser chromium
 
 # --- Sequential thinking ---------------------------------------------------
 add_mcp sequential-thinking npx -y @modelcontextprotocol/server-sequential-thinking
