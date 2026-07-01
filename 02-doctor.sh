@@ -74,7 +74,7 @@ else
 fi
 
 step "Dev tooling (monitoring & multi-project)"
-check "claude-monitor (usage gauge)" has claude-monitor
+if has claude-monitor; then ok "claude-monitor (usage gauge)"; pass=$((pass+1)); else note "claude-monitor not installed — lives in the VM (./03-vm-up.sh), or host via ./01-setup.sh --with-extras"; fi
 if has claude-squad || has cs; then ok "Claude Squad (cs)"; pass=$((pass+1)); else note "Claude Squad not installed (scripts/60-dev-tools.sh)"; fi
 if has npx; then ok "ccusage / ccstatusline available via npx"; pass=$((pass+1)); else note "npx missing — ccusage/ccstatusline unavailable"; fi
 oteldir="${OTEL_DIR:-$HOME/Tools/claude-code-otel}"
