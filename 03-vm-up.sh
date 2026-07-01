@@ -13,8 +13,22 @@ step "Colima VM — default isolated dev environment"
 
 has brew || die "Homebrew required (see your Mac OS Setup doc)."
 ensure_brew colima
-ensure_brew docker
-brew list --formula docker-compose >/dev/null 2>&1 || brew install docker-compose >/dev/null 2>&1 || true
+# The host only needs a docker CLI — it talks to Colima's dockerd via the 'colima' context that
+# `colima start` activates. If one already exists (e.g. Docker Desktop), reuse it: installing the
+# 'docker' formula would be redundant AND fail at `brew link` (Docker Desktop owns the docker
+# completion symlinks), aborting this script.
+if has docker; then
+  ok "docker CLI present: $(command -v docker) — Colima provides the daemon (colima context)"
+else
+  ensure_brew docker
+fi
+# docker compose: Docker Desktop ships it as a plugin; only install the standalone formula if absent.
+if docker compose version >/dev/null 2>&1 || has docker-compose; then
+  ok "docker compose available"
+else
+  NONINTERACTIVE=1 HOMEBREW_NO_ENV_HINTS=1 brew install docker-compose >/dev/null 2>&1 \
+    || warn "docker-compose not installed (compose plugin is optional)."
+fi
 
 # RAM-aware sizing: 8GB on a 24GB Mac, 12GB if the host has more.
 mem_bytes="$(sysctl -n hw.memsize 2>/dev/null || echo 0)"

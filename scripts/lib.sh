@@ -98,7 +98,8 @@ ensure_brew() {
     ok "$pkg already installed"
   else
     info "Installing $pkg via brew..."
-    brew install "$pkg"
+    # NONINTERACTIVE: auto-confirm brew's "Do you want to proceed?" prompt (scripted install).
+    NONINTERACTIVE=1 HOMEBREW_NO_ENV_HINTS=1 brew install "$pkg"
   fi
 }
 
@@ -108,7 +109,7 @@ ensure_brew_cask() {
     ok "$pkg (cask) already installed"
   else
     info "Installing $pkg (cask) via brew..."
-    brew install --cask "$pkg"
+    NONINTERACTIVE=1 HOMEBREW_NO_ENV_HINTS=1 brew install --cask "$pkg"
   fi
 }
 
