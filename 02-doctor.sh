@@ -73,16 +73,19 @@ else
   note "Skipping MCP check (no claude CLI)."
 fi
 
-step "Dev tooling (monitoring & multi-project)"
-if has claude-monitor; then ok "claude-monitor (usage gauge)"; pass=$((pass+1)); else note "claude-monitor not installed — lives in the VM (./03-vm-up.sh), or host via ./01-setup.sh --with-extras"; fi
-if has claude-squad || has cs; then ok "Claude Squad (cs)"; pass=$((pass+1)); else note "Claude Squad not installed (scripts/60-dev-tools.sh)"; fi
+step "Dev tooling (status line & usage)"
 if has npx; then ok "ccusage / ccstatusline available via npx"; pass=$((pass+1)); else note "npx missing — ccusage/ccstatusline unavailable"; fi
-oteldir="${OTEL_DIR:-$HOME/Tools/claude-code-otel}"
-if [[ -d "$oteldir/.git" ]]; then ok "claude-code-otel cloned"; pass=$((pass+1)); else note "claude-code-otel not cloned (optional Grafana stack)"; fi
 if [[ -e "$CDIR/settings.json" ]] && has jq; then
   if jq -e '.statusLine' "$CDIR/settings.json" >/dev/null 2>&1; then ok "status line wired (ccstatusline)"; pass=$((pass+1)); else note "no statusLine in settings.json"; fi
   if jq -e '.env.CLAUDE_CODE_ENABLE_TELEMETRY' "$CDIR/settings.json" >/dev/null 2>&1; then ok "OpenTelemetry wired"; pass=$((pass+1)); else note "OTEL not wired in settings.json"; fi
 fi
+
+step "Monitoring & multi-project (recommended in the VM)"
+info "Recommended: run these in the VM — ./03-vm-up.sh installs them. Host is optional: ./01-setup.sh --with-extras"
+oteldir="${OTEL_DIR:-$HOME/Tools/claude-code-otel}"
+if has claude-monitor; then ok "claude-monitor (usage gauge)"; pass=$((pass+1)); else note "claude-monitor — not on host (recommended in the VM: ./03-vm-up.sh)"; fi
+if has claude-squad || has cs; then ok "claude-squad (cs)"; pass=$((pass+1)); else note "claude-squad — not on host (recommended in the VM: ./03-vm-up.sh)"; fi
+if [[ -d "$oteldir/.git" ]]; then ok "claude-code-otel cloned"; pass=$((pass+1)); else note "claude-code-otel — not on host (recommended in the VM: ./03-vm-up.sh)"; fi
 
 step "Summary"
 printf '  %s%d passed%s, %s%d warnings%s, %s%d failed%s\n' \
