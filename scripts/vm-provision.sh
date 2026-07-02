@@ -105,6 +105,20 @@ if ! has grpcurl; then
   rm -rf "$gt"
 fi
 
+# --- fd (fast, user-friendly file finder; used by search skills like file-search) -----------
+# Ubuntu ships it as the 'fd-find' package with the binary named 'fdfind' (name clash with
+# another package), so symlink 'fd' — that's the name tools and skills actually call.
+if ! has fd && has apt-get; then
+  say "installing fd (fd-find)…"
+  if sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq fd-find >/dev/null 2>&1; then
+    fdbin="$(command -v fdfind || true)"
+    if [ -n "$fdbin" ]; then sudo ln -sfn "$fdbin" /usr/local/bin/fd; fi
+    ok "fd (fd-find → /usr/local/bin/fd)"
+  else
+    warn "fd-find install failed."
+  fi
+fi
+
 # --- uv --------------------------------------------------------------------
 if ! has uv; then
   say "installing uv…"
@@ -200,6 +214,24 @@ if has apt-get && ! has luacheck; then
   say "installing Lua + luacheck (linter for Redis Lua / Functions)…"
   sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq lua5.4 luarocks >/dev/null 2>&1 || warn "lua/luarocks install failed"
   sudo luarocks install luacheck >/dev/null 2>&1 || warn "luacheck install failed"
+fi
+
+# --- OpenTofu (Terraform-compatible IaC) — VALIDATE-ONLY in the VM --------------------------
+# The VM runs the credential-free build-time checks — `tofu fmt -check`, `tofu init -backend=false`,
+# `tofu validate`. `tofu plan/apply` need cloud creds + backend state, so they stay on the HOST
+# (deploy side). Static binary from GitHub releases, like grpcurl/gitleaks.
+if ! has tofu; then
+  say "installing OpenTofu (tofu — validate/fmt in the VM; plan/apply stay on the host)…"
+  tofuver="1.12.3"; case "$(uname -m)" in aarch64|arm64) tofuarch="arm64";; *) tofuarch="amd64";; esac
+  tft="$(mktemp -d)"
+  if curl -fsSL "https://github.com/opentofu/opentofu/releases/download/v${tofuver}/tofu_${tofuver}_linux_${tofuarch}.tar.gz" -o "$tft/t.tgz" 2>/dev/null \
+     && tar -xzf "$tft/t.tgz" -C "$tft" tofu 2>/dev/null \
+     && sudo install "$tft/tofu" /usr/local/bin/tofu 2>/dev/null; then
+    ok "OpenTofu $tofuver"
+  else
+    warn "OpenTofu install failed (optional; IaC validation won't run in the VM)."
+  fi
+  rm -rf "$tft"
 fi
 
 # --- skills + global config + MCP: reuse the mounted kit (OS-agnostic steps) -----
