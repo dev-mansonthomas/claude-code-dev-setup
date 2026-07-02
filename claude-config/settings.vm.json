@@ -11,5 +11,11 @@
       "WebSearch",
       "WebFetch(domain:*)"
     ]
+  },  
+  "autoMode": {
+    "environment": [
+      "$defaults",
+      "This is an isolated build/validation VM with no cloud credentials (no AWS, GCP, Azure, or Terraform/OpenTofu backend auth). It never runs plan, apply, or destroy; infrastructure is applied only later, from the host. Terraform/OpenTofu (.tf, HCL) files in the working directory are edited and validated here as ordinary source files, with no live infrastructure side effects."
+    ]
   }
 }
