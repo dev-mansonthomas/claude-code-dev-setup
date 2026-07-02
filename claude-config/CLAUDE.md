@@ -120,8 +120,11 @@ from the host.** When driving a project toward deployment:
   (chromium/firefox/webkit) are in `~/.cache/ms-playwright` and the **Playwright MCP is connected** —
   for browser capture / e2e use the MCP or `chromium`; **never** `playwright install chrome` (no
   arm64 build on Linux → always fails). `CHROME_BIN` points at that Chromium (Angular Karma). Also
-  present: `redis-cli` 8.x, JDK 21 + Maven 3.9, `luacheck`, `uv`, `gh`, `jq`, `shellcheck`, and
+  present: `redis-cli` 8.x, JDK 21 + Maven 3.9, `luacheck`, `fd`, `uv`, `gh`, `jq`, `shellcheck`, and
   network/debug tools (dig, telnet, nc, tcpdump/tshark, ss, lsof, strace, htop, nmap, httpie, yq, grpcurl).
+  **OpenTofu (`tofu`)** is here for **validate-only** work — `tofu fmt -check`, `tofu init -backend=false`,
+  `tofu validate` (all credential-free). **Never** `tofu plan/apply/destroy` in the VM (needs cloud
+  creds + backend state) — that's host/deploy-side.
 - **Missing a tool?** If a command you need isn't installed in the VM, **don't silently work around
   it** — name the missing command/package and tell the user to add it to `scripts/vm-provision.sh`
   (then `./03-vm-up.sh`), so every future session has it too.
