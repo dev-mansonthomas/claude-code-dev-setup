@@ -234,12 +234,13 @@ if ! has tofu; then
   rm -rf "$tft"
 fi
 
-# --- skills + global config + MCP: reuse the mounted kit (OS-agnostic steps) -----
+# --- skills + global config + MCP + plugins: reuse the mounted kit (OS-agnostic steps) -----
 if [[ -n "$KIT" && -d "$KIT" ]]; then
-  say "installing skills + global config + MCP from the kit…"
+  say "installing skills + global config + MCP + plugins from the kit…"
   AUTO_YES=1 bash "$KIT/scripts/20-skills.sh"        || warn "skills step issues"
   AUTO_YES=1 bash "$KIT/scripts/50-global-config.sh" || warn "config step issues"
   AUTO_YES=1 bash "$KIT/scripts/30-mcp.sh" >/dev/null 2>&1 || warn "MCP registration issues"
+  AUTO_YES=1 bash "$KIT/scripts/40-plugins.sh" >/dev/null 2>&1 || warn "plugin install issues (e.g. superpowers)"
 else
   warn "kit dir not found ($KIT) — skipped skills/config (is ~/Projects mounted?)."
 fi
