@@ -28,7 +28,9 @@ info "$present_now skill(s) already in ~/.claude/skills."
 SKILL_SOURCES=(
   "https://github.com/fcenedes/redis_sa_skills||caveman"
   "https://github.com/redis/agent-skills||redis-core"
-  "https://github.com/anthropics/skills|frontend-design pdf canvas-design theme-factory web-artifacts-builder mcp-builder webapp-testing|web-artifacts-builder"
+  "https://github.com/anthropics/skills|frontend-design pdf docx pptx xlsx canvas-design theme-factory web-artifacts-builder mcp-builder webapp-testing skill-creator|skill-creator"
+  "https://github.com/vercel-labs/agent-skills|web-design-guidelines react-best-practices|web-design-guidelines"
+  "https://github.com/vercel-labs/skills|find-skills|find-skills"
   "https://github.com/netresearch/file-search-skill|file-search|file-search"
 )
 

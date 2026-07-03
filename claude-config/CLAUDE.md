@@ -158,8 +158,9 @@ task matches one, invoke it yourself without being asked (you may also name one 
 
 - **Up-to-date docs / versions** → Context7 MCP (`use context7`).
 - **Web UI build** → `frontend-design` (quality UI), `web-artifacts-builder` (claude.ai
-  HTML artifacts: React/Tailwind/shadcn), `canvas-design` / `theme-factory` (visuals,
-  themes), `redis-brand-ui` / `redis-product-ui` (Redis look), `web-design-guidelines` (a11y/UX).
+  HTML artifacts: React/Tailwind/shadcn), `react-best-practices` (React/Vite conventions),
+  `canvas-design` / `theme-factory` (visuals, themes), `redis-brand-ui` / `redis-product-ui`
+  (Redis look), `web-design-guidelines` (a11y/UX).
 - **Browser & web testing** → `playwright-test`, `playwright-cli-agent`, `webapp-testing`.
 - **Build an MCP server** → `mcp-builder`.
 - **Docs / files** → `pdf`, `docx`, `pptx`, `xlsx` (SA deliverables & analysis).
@@ -173,6 +174,8 @@ task matches one, invoke it yourself without being asked (you may also name one 
 - **Multi-agent / big tasks** → `agent-delegation-planning`,
   `agent-delegation-routing`, `agent-capability-ledger`, `agent-memory-*`.
 - **Built-in reviews** → `/code-review`, `/security-review`, `/verify`.
+- **Discover / build skills** → `find-skills` (find an installable skill for a need),
+  `skill-creator` (author or optimize your own).
 
 ## Tech stack defaults (override per project)
 
