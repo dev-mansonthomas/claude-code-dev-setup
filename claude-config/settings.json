@@ -91,6 +91,17 @@
     "padding": 0,
     "refreshInterval": 10
   },
-  "theme": "dark",
-  "skipWorkflowUsageWarning": true
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true
+  },
+  "extraKnownMarketplaces": {
+    "claude-plugins-official": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-plugins-official"
+      }
+    }
+  },
+  "skipWorkflowUsageWarning": true,
+  "theme": "dark"
 }
