@@ -1,5 +1,4 @@
 {
-  "env": { "DISABLE_GROWTHBOOK": "1" },
   "sandbox": { "enabled": false },
   "preferredNotifChannel": "terminal_bell",
   "permissions": {
