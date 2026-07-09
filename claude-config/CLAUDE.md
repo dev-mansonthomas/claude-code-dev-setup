@@ -120,7 +120,8 @@ from the host.** When driving a project toward deployment:
   (chromium/firefox/webkit) are in `~/.cache/ms-playwright` and the **Playwright MCP is connected** —
   for browser capture / e2e use the MCP or `chromium`; **never** `playwright install chrome` (no
   arm64 build on Linux → always fails). `CHROME_BIN` points at that Chromium (Angular Karma). Also
-  present: `redis-cli` 8.x, JDK 21 + Maven 3.9, `luacheck`, `fd`, `uv`, `gh`, `jq`, `shellcheck`, and
+  present: `redis-cli` 8.x, JDK 21 + Maven 3.9, **Go**, **Rust** (rustup: cargo/rustc/clippy/rustfmt),
+  **.NET SDK** (LTS, `dotnet`), Node 24, `luacheck`, `fd`, `uv`, `gh`, `jq`, `shellcheck`, and
   network/debug tools (dig, telnet, nc, tcpdump/tshark, ss, lsof, strace, htop, nmap, httpie, yq, grpcurl).
   **OpenTofu (`tofu`)** is here for **validate-only** work — `tofu fmt -check`, `tofu init -backend=false`,
   `tofu validate` (all credential-free). **Never** `tofu plan/apply/destroy` in the VM (needs cloud

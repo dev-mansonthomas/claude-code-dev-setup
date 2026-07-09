@@ -234,6 +234,58 @@ if ! has tofu; then
   rm -rf "$tft"
 fi
 
+# --- Go toolchain (official tarball — apt lags; go.dev/VERSION is always the latest stable) --
+if ! has go; then
+  gover="$(curl -fsSL 'https://go.dev/VERSION?m=text' 2>/dev/null | head -1)"
+  case "$(uname -m)" in aarch64|arm64) goarch="arm64";; *) goarch="amd64";; esac
+  if [ -n "$gover" ]; then
+    say "installing Go ($gover)…"
+    gt="$(mktemp -d)"
+    if curl -fsSL "https://go.dev/dl/${gover}.linux-${goarch}.tar.gz" -o "$gt/go.tgz" 2>/dev/null \
+       && sudo rm -rf /usr/local/go \
+       && sudo tar -C /usr/local -xzf "$gt/go.tgz" 2>/dev/null; then
+      # shellcheck disable=SC2016  # $PATH/$HOME are meant to stay literal — they expand at login
+      printf 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin\n' | sudo tee /etc/profile.d/go.sh >/dev/null
+      ok "Go $gover (/usr/local/go)"
+    else
+      warn "Go install failed (optional)."
+    fi
+    rm -rf "$gt"
+  else
+    warn "could not resolve the latest Go version (skipping)."
+  fi
+fi
+
+# --- Rust toolchain (rustup — the canonical installer; installs the current stable) ---------
+if ! has cargo && ! has rustc; then
+  say "installing Rust (rustup, stable)…"
+  if curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs 2>/dev/null | sh -s -- -y --profile default --no-modify-path >/dev/null 2>&1; then
+    # System profile.d entry so every login shell (zsh/bash) picks up ~/.cargo/bin per user.
+    # shellcheck disable=SC2016  # $HOME is meant to stay literal — it expands at login
+    printf '[ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"\n' | sudo tee /etc/profile.d/cargo.sh >/dev/null
+    ok "Rust (rustup) — rustc/cargo/clippy/rustfmt in ~/.cargo/bin"
+  else
+    warn "Rust install failed (optional)."
+  fi
+fi
+
+# --- .NET SDK (Microsoft dotnet-install.sh; --channel LTS = latest LTS, no version pin) ------
+if ! has dotnet; then
+  say "installing .NET SDK (LTS)…"
+  dt="$(mktemp -d)"
+  if curl -fsSL https://dot.net/v1/dotnet-install.sh -o "$dt/dotnet-install.sh" 2>/dev/null \
+     && chmod +x "$dt/dotnet-install.sh" \
+     && sudo "$dt/dotnet-install.sh" --channel LTS --install-dir /usr/local/dotnet --no-path >/dev/null 2>&1; then
+    # shellcheck disable=SC2016  # $PATH is meant to stay literal — it expands at login
+    printf 'export DOTNET_ROOT=/usr/local/dotnet\nexport DOTNET_CLI_TELEMETRY_OPTOUT=1\nexport PATH=$PATH:/usr/local/dotnet\n' \
+      | sudo tee /etc/profile.d/dotnet.sh >/dev/null
+    ok ".NET SDK LTS (/usr/local/dotnet)"
+  else
+    warn ".NET SDK install failed (optional)."
+  fi
+  rm -rf "$dt"
+fi
+
 # --- skills + global config + MCP + plugins: reuse the mounted kit (OS-agnostic steps) -----
 if [[ -n "$KIT" && -d "$KIT" ]]; then
   say "installing skills + global config + MCP + plugins from the kit…"
