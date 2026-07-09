@@ -14,9 +14,12 @@ if ! CLAUDE="$(claude_bin)"; then
   exit 0
 fi
 
-# Format: "<marketplace-repo>|<plugin-name>"
+# Format: "<marketplace-repo>|<plugin-name>"  (plugin-name may be name@marketplace to pin the source)
 PLUGINS=(
-  "obra/superpowers-marketplace|superpowers"   # TDD/planning/debug methodology; makes Claude use its skills
+  # Superpowers from the OFFICIAL Anthropic marketplace (anthropics/claude-plugins-official), not the
+  # author's own obra/superpowers-marketplace: official source = better trust/maintenance, and a bare
+  # `install superpowers` resolves to the official one anyway. TDD/planning/debug methodology.
+  "anthropics/claude-plugins-official|superpowers@claude-plugins-official"
 )
 
 for entry in "${PLUGINS[@]}"; do
