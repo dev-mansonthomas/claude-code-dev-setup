@@ -117,9 +117,14 @@ from the host.** When driving a project toward deployment:
 - The VM's **interactive** shell is zsh (matches the host); keep scripts you write
   **POSIX/bash-portable** — Claude's command tool runs bash.
 - **Pre-installed in the VM — use it, don't reinstall.** **Playwright** browsers
-  (chromium/firefox/webkit) are in `~/.cache/ms-playwright` and the **Playwright MCP is connected** —
-  for browser capture / e2e use the MCP or `chromium`; **never** `playwright install chrome` (no
-  arm64 build on Linux → always fails). `CHROME_BIN` points at that Chromium (Angular Karma). Also
+  (chromium/firefox/webkit) are in `~/.cache/ms-playwright` and the **Playwright MCP is connected**.
+  To **screenshot a page** (e.g. verify a UI), use the reliable path: `npx playwright screenshot
+  --browser=chromium [--full-page] <url> out.png`, or the **Playwright MCP** (`browser_navigate` →
+  `browser_take_screenshot`). Both render headless with the cached Chromium and WORK. Do **not**
+  conclude "Playwright is broken" from raw `chromium --headless --screenshot` / `--dump-dom` — those
+  CLI flags are finicky and print a harmless `DBus`/`UPower ServiceUnknown` error even on success
+  (the PNG is still written). **Never** `playwright install chrome` (no arm64 Linux build → always
+  fails). `CHROME_BIN` points at that Chromium (Angular Karma). Also
   present: `redis-cli` 8.x, JDK 21 + Maven 3.9, **Go**, **Rust** (rustup: cargo/rustc/clippy/rustfmt),
   **.NET SDK** (LTS, `dotnet`), Node 24, `luacheck`, `fd`, `uv`, `gh`, `jq`, `shellcheck`, and
   network/debug tools (dig, telnet, nc, tcpdump/tshark, ss, lsof, strace, htop, nmap, httpie, yq, grpcurl).
