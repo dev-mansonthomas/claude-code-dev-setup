@@ -3,7 +3,8 @@
 #   context7            up-to-date, version-specific library docs (kills hallucinated APIs)
 #   playwright          drive a real browser for web testing/automation
 #   sequential-thinking structured multi-step reasoning
-# Redis MCP is per-project (needs a DB + connection string) so we only PRINT a
+#   redis-docs          official Redis documentation (HTTP MCP at https://redis.io/mcp)
+# The Redis *data* MCP is per-project (needs a DB + connection string) so we only PRINT a
 # ready-to-paste snippet rather than add it globally.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -53,6 +54,19 @@ add_mcp playwright npx -y @playwright/mcp@latest --browser chromium
 
 # --- Sequential thinking ---------------------------------------------------
 add_mcp sequential-thinking npx -y @modelcontextprotocol/server-sequential-thinking
+
+# --- Redis docs (official HTTP MCP: current Redis docs; user scope, no secret) --------------
+# HTTP transport, so it doesn't fit add_mcp (which is stdio "-- <cmd>"); register it directly.
+if mcp_exists redis-docs; then
+  ok "MCP 'redis-docs' already configured"
+else
+  info "Adding MCP 'redis-docs' (HTTP)..."
+  if "$CLAUDE" mcp add --scope user --transport http redis-docs https://redis.io/mcp; then
+    ok "Added 'redis-docs'"
+  else
+    warn "Could not add 'redis-docs' (continuing)."
+  fi
+fi
 
 # --- Redis MCP: per-project snippet (not added globally) -------------------
 cat <<'SNIPPET'
