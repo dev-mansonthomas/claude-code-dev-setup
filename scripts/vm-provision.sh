@@ -286,6 +286,28 @@ if ! has dotnet; then
   rm -rf "$dt"
 fi
 
+# --- obscura (stealth headless browser for AI agents/scraping — prebuilt Rust binary, no npm) --
+# FALLBACK for web research when a site blocks/filters normal fetch, or for JS-heavy pages. Prebuilt
+# binary (no build, no npm, no curl|bash). VM-only on purpose: it runs untrusted page JS via V8, so
+# the isolated VM is the right place. Ships its own MCP server, registered by 30-mcp.sh.
+if ! has obscura; then
+  case "$(uname -m)" in aarch64|arm64) obarch="aarch64";; *) obarch="x86_64";; esac
+  say "installing obscura (stealth headless browser, ${obarch}-linux)…"
+  ot="$(mktemp -d)"
+  if curl -fsSL "https://github.com/h4ckf0r0day/obscura/releases/latest/download/obscura-${obarch}-linux-stealth.tar.gz" -o "$ot/o.tgz" 2>/dev/null \
+     && tar -xzf "$ot/o.tgz" -C "$ot" 2>/dev/null; then
+    obin="$(find "$ot" -type f -name obscura 2>/dev/null | head -1)"
+    if [ -n "$obin" ] && sudo install "$obin" /usr/local/bin/obscura 2>/dev/null; then
+      ok "obscura installed ($(/usr/local/bin/obscura --version 2>/dev/null | head -1))"
+    else
+      warn "obscura binary not found in tarball (skipping)."
+    fi
+  else
+    warn "obscura download/extract failed (optional; stealth-browser fallback unavailable)."
+  fi
+  rm -rf "$ot"
+fi
+
 # --- skills + global config + MCP + plugins: reuse the mounted kit (OS-agnostic steps) -----
 if [[ -n "$KIT" && -d "$KIT" ]]; then
   say "installing skills + global config + MCP + plugins from the kit…"

@@ -4,6 +4,7 @@
 #   playwright          drive a real browser for web testing/automation
 #   sequential-thinking structured multi-step reasoning
 #   redis-docs          official Redis documentation (HTTP MCP at https://redis.io/mcp)
+#   obscura             stealth headless browser (VM-only; anti-detect FALLBACK for web research)
 # The Redis *data* MCP is per-project (needs a DB + connection string) so we only PRINT a
 # ready-to-paste snippet rather than add it globally.
 set -euo pipefail
@@ -66,6 +67,14 @@ else
   else
     warn "Could not add 'redis-docs' (continuing)."
   fi
+fi
+
+# --- obscura (stealth headless browser MCP — VM-only; register only if the binary is present) --
+# vm-provision.sh installs the obscura binary; on the host it's absent, so skip cleanly.
+if has obscura; then
+  add_mcp obscura obscura mcp
+else
+  ok "obscura MCP skipped (binary not installed — it's a VM-only tool)"
 fi
 
 # --- Redis MCP: per-project snippet (not added globally) -------------------
