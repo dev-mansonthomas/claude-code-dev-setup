@@ -131,6 +131,10 @@ from the host.** When driving a project toward deployment:
   **OpenTofu (`tofu`)** is here for **validate-only** work — `tofu fmt -check`, `tofu init -backend=false`,
   `tofu validate` (all credential-free). **Never** `tofu plan/apply/destroy` in the VM (needs cloud
   creds + backend state) — that's host/deploy-side.
+  **`obscura`** (stealth headless browser, its own MCP, VM-only) is a **fallback** for web research —
+  default to `WebSearch`/`WebFetch`, and switch to the **obscura** MCP only when a site blocks /
+  filters / CAPTCHAs you, or a page needs JS rendering. It's not the default path. Respect
+  `robots.txt`, rate limits, and each site's ToS; don't use it against sites that forbid scraping.
 - **Missing a tool?** If a command you need isn't installed in the VM, **don't silently work around
   it** — name the missing command/package and tell the user to add it to `scripts/vm-provision.sh`
   (then `./03-vm-up.sh`), so every future session has it too.
