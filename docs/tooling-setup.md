@@ -1,11 +1,13 @@
-# Monitoring & multi-project tooling (installed by `01-setup.sh`)
+# Monitoring & multi-project tooling (host — OFF by default; lives in the VM)
 
-This is **part of the standard install** — `./01-setup.sh` installs and wires everything
-below automatically. This page is reference (copy it into your Mac OS setup guide).
+This host tooling is **OFF by default**: the monitoring/multi-project stack runs in the **VM**
+(installed by `./03-vm-up.sh`). To add it to the **host** too, run `./01-setup.sh --with-extras`.
+This page is reference (copy it into your Mac OS setup guide).
 
-## What the standard install does
+## What the dev-tools step installs
 
-The **dev-tools** step (`scripts/60-dev-tools.sh`, run by `01-setup.sh`) installs:
+The **dev-tools** step (`scripts/60-dev-tools.sh`) — run in the VM by `03-vm-up.sh`, or on the host
+only with `./01-setup.sh --with-extras` — installs:
 
 | Tool | What it's for | How it's installed |
 |------|---------------|--------------------|
@@ -19,8 +21,9 @@ And `settings.json` (installed by step 50) wires automatically:
 - **OpenTelemetry** — exports metrics/logs to a **local** collector for the claude-code-otel
   Grafana dashboards.
 
-> Don't want the tooling? `./01-setup.sh --no-extras` skips this step (and you can drop the
-> `statusLine`/`env` blocks from `claude-config/settings.json`).
+> These are host extras, **off by default** — `./01-setup.sh --with-extras` opts the host in; the
+> VM gets them via `./03-vm-up.sh`. (The `statusLine`/`env` blocks in `claude-config/settings.json`
+> are wired regardless; drop them if you don't want the status line / telemetry.)
 
 ## The one manual step: start the dashboards
 

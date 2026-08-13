@@ -15,9 +15,11 @@ It (idempotently):
 - installs `colima` + `docker` (Homebrew) if missing;
 - starts Colima with **`vz` + `virtiofs`**, **`~/Projects` mounted writable**, Docker on;
 - sizes the VM by host RAM: **8 GB** (≤24 GB Mac) or **12 GB** (more) — `--cpu 4/6 --disk 60`;
-- **provisions the VM** (`scripts/vm-provision.sh`): Claude Code, git/jq/gitleaks/uv, the
-  kit's skills + global config (reused from the mounted kit), `claude-monitor`, and clones
-  `claude-code-otel`;
+- **provisions the VM** (`scripts/vm-provision.sh`): Claude Code, git/jq/gitleaks/uv, the kit's
+  skills + global config, the full language/dev toolchain (Node, JDK+Maven, Go, Rust, .NET,
+  redis-cli 8, luacheck, OpenTofu, fd, Playwright browsers, obscura), the MCP servers
+  (context7/playwright/sequential-thinking/redis-docs/obscura) + the superpowers plugin,
+  `claude-monitor`, and clones `claude-code-otel` — full list in [claude-code-setup.md](claude-code-setup.md) §5.6;
 - links **`ccvm`** onto your PATH and installs a **LaunchAgent** so the VM **auto-starts at login**.
 
 First time only, **authenticate the VM** — Claude in the VM has no browser, so use a long-lived
@@ -44,19 +46,21 @@ The host and the VM **must not share** one `settings.json` — they want opposit
 | | Sandbox | Permissions | Why |
 |---|---|---|---|
 | **Host** (symlinked `settings.json`) | **on** (Seatbelt) | `acceptEdits` + allow-list | the host is the sensitive environment — lock it down |
-| **VM** (`settings.json` real file) | **off** | `acceptEdits` + **broad allow-list** | the VM **is** the boundary — auto-accept edits and auto-run the dev toolchain |
+| **VM** (`settings.json` real file) | **off** | **`auto`** (via `ccvm`) + broad allow-list | the VM **is** the boundary — a classifier gates destructive ops, everything else auto-runs |
 
-The VM posture lives in [`claude-config/settings.vm.json`](../claude-config/settings.vm.json) (just the
-deltas: `sandbox.enabled=false`, `permissions.defaultMode=acceptEdits`). `03-vm-up.sh` merges it over the
-base and writes a **real** `~/.claude/settings.json` in the VM, **regenerated every run** so it stays in
-sync with the kit; the host keeps the symlinked, sandboxed profile. With `acceptEdits` + the broad
-allow-list, Claude auto-accepts edits and auto-runs allow-listed commands (incl. MCP) — only a *novel*
-command prompts (once, with a "don't ask again" option).
+The VM posture lives in [`claude-config/settings.vm.json`](../claude-config/settings.vm.json) (the deltas:
+`sandbox.enabled=false`, `permissions.defaultMode=acceptEdits`, a broad `allow` list, and an
+`autoMode.environment` that trusts the VM's own IaC edits). `03-vm-up.sh` merges it over the base and
+writes a **real** `~/.claude/settings.json` in the VM, **regenerated every run** so it stays in sync with
+the kit; the host keeps the symlinked, sandboxed profile. **`ccvm` launches Claude with
+`--permission-mode auto`** (the CLI flag overrides `defaultMode`, so `acceptEdits` is only the fallback for
+a bare `claude`): a safety classifier gates destructive/outward ops (`rm -rf`, `terraform destroy`, force
+push…) while everything else runs hands-off.
 
-> **Why not `bypassPermissions` / `--dangerously-skip-permissions`?** That bypass path is buggy in current
-> Claude Code — it still prompts for **compound** Bash (`a && b | c`) and **MCP** calls. `acceptEdits` + a
-> broad allow-list is the reliable mechanism (`ccvm` exposes `CCVM_YOLO=1` to opt back into the flag once
-> it's fixed upstream). We deliberately **do not install bubblewrap**, so `/doctor` shows a cosmetic
+> **Why not `bypassPermissions` / `--dangerously-skip-permissions`?** It's **disabled by org policy** on
+> managed (Redis Enterprise) accounts — a no-op there — and was buggy besides. **`--permission-mode auto`**
+> is the reliable autonomous mechanism (`ccvm` exposes `CCVM_SAFE=1` for acceptEdits-only, and `CCVM_YOLO=1`
+> to request bypass where policy allows). We deliberately **do not install bubblewrap**, so `/doctor` shows a cosmetic
 > *"sandbox: missing bubblewrap"* — expected; installing it would re-enable the sandbox and bring prompts back.
 
 ## Monitoring (Grafana) lives in the VM

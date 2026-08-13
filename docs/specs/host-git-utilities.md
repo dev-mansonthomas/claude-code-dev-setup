@@ -80,8 +80,9 @@ Testable criteria (`[ ]`):
   "checks": [ { "name": "lint", "conclusion": "success" } ],
   "merged": true, "alreadyMerged": false,
   "mergedSha": "abc1234",
-  "baseUpdated": true,                  // local main fast-forwarded
-  "branchDeleted": { "remote": true, "local": true }
+  "baseUpdated": true,                  // local base branch fast-forwarded
+  "branchDeleted": { "remote": true, "local": true },  // local: deleted only when it has no commits absent from every remote — unpushed follow-up work is kept, not force-deleted
+  "reportPath": "debug/git/git-pr-merge.json"
 }
 ```
 On CI failure (`ok:false`): `ci:"failed"`, `failingChecks:[{name,conclusion,detailsUrl}]`,
@@ -108,8 +109,9 @@ On CI failure (`ok:false`): `ci:"failed"`, `failingChecks:[{name,conclusion,deta
 
 **`git-pr-merge` happy path:** preconditions → resolve branch/base → `git push -u` → reuse-or-create PR
 (append footer) → poll `gh pr checks` until conclusion → on green `gh pr merge --squash --delete-branch`
-→ `git checkout <base> && git pull --ff-only` → `git fetch -p` + delete local feature branch → write
-JSON, exit 0.
+→ `git checkout <base> && git pull --ff-only` → `git fetch -p` → **safely** drop the local feature
+branch (only if it has no commits absent from every remote — a re-run after the PR already merged
+**keeps** a branch carrying unpushed follow-up work rather than force-deleting it) → write JSON, exit 0.
 
 Edge cases / handling:
 - **Not a git repo / git|gh|jq missing / `gh` not authed** → `error.code:"preconditions"`, exit 3, no mutation.

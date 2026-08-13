@@ -8,9 +8,10 @@ How to **watch token/limit usage**, **monitor context**, **observe the agent**, 
 > limits) in the middle of a sprint. The tools below are your *fuel gauge* and *flight
 > recorder*, not a billing report.
 
-> **Already installed:** `./01-setup.sh` installs and wires all of this automatically
-> (see [tooling-setup.md](tooling-setup.md)). The sections below focus on *using* each
-> piece day-to-day; the install commands are kept inline for reference.
+> **Where it runs:** this stack lives in the **VM** (`./03-vm-up.sh` installs it); on the host it's
+> **off by default** (`./01-setup.sh --with-extras` opts in — see [tooling-setup.md](tooling-setup.md)).
+> The `settings.json` telemetry/status-line `env` block is always wired; the `claude-code-otel` clone
+> follows the extras rule. The sections below focus on *using* each piece; install commands are inline.
 
 ---
 
@@ -108,13 +109,14 @@ local collector and you get real dashboards.
 **`claude-code-otel`** ([ColeMurray/claude-code-otel](https://github.com/ColeMurray/claude-code-otel))
 bundles a turnkey stack (OTEL Collector + Prometheus + Loki + Grafana with ready dashboards).
 
-**`./01-setup.sh` already cloned this stack and wired telemetry into `settings.json`.** Start
-and stop the dashboards with the root-level scripts:
+The telemetry `env` block is wired into `settings.json` for every session; the **stack itself** lives
+in the **VM** (`./03-vm-up.sh`), and on the host it's cloned only with `./01-setup.sh --with-extras`.
+Start and stop the dashboards with the root-level scripts:
 ```bash
 ./grafana-up.sh      # start Grafana, then open http://localhost:3000 (admin/admin)
 ./grafana-down.sh    # stop the containers
 ```
-(Raw controls if you want them: `cd ~/Tools/claude-code-otel && make up|down|logs|status`.)
+(Raw controls: in the VM `cd ~/claude-code-otel`, or on the host `cd ~/Tools/claude-code-otel`, then `make up|down|logs|status`.)
 Open Grafana at **http://localhost:3000** (default `admin` / `admin`); Prometheus is on
 `:9090`. Dashboards cover cost/usage, sessions & activity, tool performance, latency, and
 error logs (metrics like `claude_code.token.usage`, `claude_code.cost.usage`,
