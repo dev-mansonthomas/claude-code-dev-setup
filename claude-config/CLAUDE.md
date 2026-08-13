@@ -126,7 +126,8 @@ from the host.** When driving a project toward deployment:
   (the PNG is still written). **Never** `playwright install chrome` (no arm64 Linux build → always
   fails). `CHROME_BIN` points at that Chromium (Angular Karma). Also
   present: `redis-cli` 8.x, JDK 21 + Maven 3.9, **Go**, **Rust** (rustup: cargo/rustc/clippy/rustfmt),
-  **.NET SDK** (LTS, `dotnet`), Node 24, `luacheck`, `fd`, `uv`, `jq`, `shellcheck`, and
+  **.NET SDK** (LTS, `dotnet`), Node 24, Python 3.12 (`venv` + `pip`; `uv` for envs), `luacheck`,
+  `fd`, `uv`, `jq`, `shellcheck`, and
   network/debug tools (dig, telnet, nc, tcpdump/tshark, ss, lsof, strace, htop, nmap, httpie, yq, grpcurl).
   **OpenTofu (`tofu`)** is here for **validate-only** work — `tofu fmt -check`, `tofu init -backend=false`,
   `tofu validate` (all credential-free). **Never** `tofu plan/apply/destroy` in the VM (needs cloud
@@ -191,6 +192,7 @@ task matches one, invoke it yourself without being asked (you may also name one 
 
 - **Web**: TypeScript, a current React/Next or the project's existing framework;
   Vitest/Playwright for tests; pnpm or npm as the repo already uses.
-- **Python**: 3.13 (pyenv), `ruff` + `mypy`, `pytest`, `uv`/`venv` for envs.
+- **Python**: latest stable **3.14** via **`uv`** (`uv` installs/pins the version and manages envs —
+  no pyenv; a system 3.12 covers stdlib `venv`). `ruff` + `mypy`, `pytest`.
 - **Java/PHP**: follow the project's build (Maven/Gradle, Composer) and test setup.
 - Match the repo's existing tooling over personal preference.
