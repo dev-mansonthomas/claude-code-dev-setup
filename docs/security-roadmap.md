@@ -36,8 +36,10 @@ spawns may inherit it (undocumented → **assume yes**). Options, best first:
   `apiKeyHelper` > `CLAUDE_CODE_OAUTH_TOKEN`.
 - **Honeytoken / decoy** — put a fake, well-formed `CLAUDE_CODE_OAUTH_TOKEN` in the VM env and
   supply the *real* token via `apiKeyHelper` (higher precedence). A mass scraper grabs the decoy.
-- **Immediate, no-risk** — stop passing the token on the `colima ssh` **command line** (argv is
-  visible in `ps` / `/proc/<pid>/cmdline` on host **and** VM). Pass it through the environment only.
+- **DONE** — the token is no longer passed on the `colima ssh` **command line**. `ccvm` now streams
+  it over **stdin** into a tmpfs file (`/dev/shm/…`, mode 600); the launch command loads it into the
+  session env and `rm`s the file before Claude starts, so it never appears in any argv (`ps` /
+  `/proc/<pid>/cmdline`) on the host or in the VM.
 
 A stolen OAuth token grants only **Claude quota use** (revocable at the Console) — not host secrets.
 

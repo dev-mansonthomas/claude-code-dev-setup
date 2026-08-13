@@ -291,22 +291,46 @@ fi
 # FALLBACK for web research when a site blocks/filters normal fetch, or for JS-heavy pages. Prebuilt
 # binary (no build, no npm, no curl|bash). VM-only on purpose: it runs untrusted page JS via V8, so
 # the isolated VM is the right place. Ships its own MCP server, registered by 30-mcp.sh.
+# PINNED to an exact version + SHA256 — obscura is a third-party project and publishes no checksums,
+# so we verify the bytes before installing. To bump: set OBSCURA_VERSION and recompute both SHA256s
+# (`shasum -a 256 obscura-<arch>-linux-stealth.tar.gz`). The notifier below flags newer releases.
+OBSCURA_VERSION="0.2.0"
+OBSCURA_SHA256_AARCH64="d9b55448043815872d6fdc9d51aca7efd4055abff41fe3dd3fb512718c746bee"
+OBSCURA_SHA256_X86_64="4b0fe0ff32a2e17e33b1e3d67bfb06e8f4d875bdffa86aa766277232422dfde7"
 if ! has obscura; then
-  case "$(uname -m)" in aarch64|arm64) obarch="aarch64";; *) obarch="x86_64";; esac
-  say "installing obscura (stealth headless browser, ${obarch}-linux)…"
+  case "$(uname -m)" in
+    aarch64|arm64) obarch="aarch64"; obsha="$OBSCURA_SHA256_AARCH64" ;;
+    *)             obarch="x86_64";  obsha="$OBSCURA_SHA256_X86_64" ;;
+  esac
+  say "installing obscura ${OBSCURA_VERSION} (stealth headless browser, ${obarch}-linux)…"
   ot="$(mktemp -d)"
-  if curl -fsSL "https://github.com/h4ckf0r0day/obscura/releases/latest/download/obscura-${obarch}-linux-stealth.tar.gz" -o "$ot/o.tgz" 2>/dev/null \
-     && tar -xzf "$ot/o.tgz" -C "$ot" 2>/dev/null; then
-    obin="$(find "$ot" -type f -name obscura 2>/dev/null | head -1)"
-    if [ -n "$obin" ] && sudo install "$obin" /usr/local/bin/obscura 2>/dev/null; then
-      ok "obscura installed ($(/usr/local/bin/obscura --version 2>/dev/null | head -1))"
+  url="https://github.com/h4ckf0r0day/obscura/releases/download/v${OBSCURA_VERSION}/obscura-${obarch}-linux-stealth.tar.gz"
+  if curl -fsSL "$url" -o "$ot/o.tgz" 2>/dev/null; then
+    got="$(sha256sum "$ot/o.tgz" 2>/dev/null | awk '{print $1}')"
+    if [ "$got" != "$obsha" ]; then
+      warn "obscura SHA256 mismatch (got ${got:-none}, want $obsha) — NOT installing (tampering or stale pin)."
+    elif tar -xzf "$ot/o.tgz" -C "$ot" 2>/dev/null; then
+      obin="$(find "$ot" -type f -name obscura 2>/dev/null | head -1)"
+      if [ -n "$obin" ] && sudo install "$obin" /usr/local/bin/obscura 2>/dev/null; then
+        ok "obscura ${OBSCURA_VERSION} installed ($(/usr/local/bin/obscura --version 2>/dev/null | head -1))"
+      else
+        warn "obscura binary not found in tarball / install failed (skipping)."
+      fi
     else
-      warn "obscura binary not found in tarball (skipping)."
+      warn "obscura extract failed (skipping)."
     fi
   else
-    warn "obscura download/extract failed (optional; stealth-browser fallback unavailable)."
+    warn "obscura download failed (optional; stealth-browser fallback unavailable)."
   fi
   rm -rf "$ot"
+fi
+# obscura update notifier — warn (never auto-update) when a newer release than the pin exists, so the
+# maintainer reviews the changelog and bumps OBSCURA_VERSION + the two SHA256s above deliberately.
+if has curl && has jq; then
+  obs_latest="$(curl -fsSL https://api.github.com/repos/h4ckf0r0day/obscura/releases/latest 2>/dev/null | jq -r '.tag_name // empty' | sed 's/^v//')"
+  if [ -n "$obs_latest" ] && [ "$obs_latest" != "$OBSCURA_VERSION" ]; then
+    warn "obscura $obs_latest is available (pinned: $OBSCURA_VERSION). Review it, then bump OBSCURA_VERSION + the two SHA256 pins in scripts/vm-provision.sh."
+  fi
 fi
 
 # --- skills + global config + MCP + plugins: reuse the mounted kit (OS-agnostic steps) -----
