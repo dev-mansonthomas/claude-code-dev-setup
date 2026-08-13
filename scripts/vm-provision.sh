@@ -18,7 +18,8 @@ say "Provisioning the VM as a Claude Code dev box…"
 # zsh: match the host's interactive shell (Claude's command tool still runs bash, so keep scripts
 # POSIX/bash-portable). NB: we deliberately do NOT install bubblewrap/socat — they'd make Claude
 # Code ENABLE its Bash sandbox, which then prompts "(unsandboxed)" per command; the VM is the
-# boundary, so we run with NO inner sandbox (acceptEdits + a broad allow-list — see settings.vm.json).
+# boundary, so we run with NO inner sandbox + a broad allow-list (see settings.vm.json); the primary
+# launcher `ccvm` starts Claude in `auto` mode via the CLI flag (settings' defaultMode is a fallback).
 # /doctor then shows a cosmetic "sandbox: missing bubblewrap" note — expected and harmless.
 if has apt-get; then
   sudo apt-get update -qq >/dev/null 2>&1 || true
@@ -335,7 +336,9 @@ fi
 
 # --- VM settings profile: the VM is the security boundary, so it runs the OPPOSITE posture to the
 #     host — NO inner Bash sandbox + full autonomy via a BROAD allow-list (all Bash, file edits,
-#     WebSearch/WebFetch, the MCP servers) under acceptEdits. Result: no authorization prompts,
+#     WebSearch/WebFetch, the MCP servers). settings.json sets defaultMode=acceptEdits as a fallback,
+#     but `ccvm` launches Claude with `--permission-mode auto` (the CLI flag overrides defaultMode),
+#     so `auto` is the actual posture of the primary workflow. Result: no authorization prompts,
 #     without relying on the buggy --dangerously-skip-permissions flag. We write a REAL
 #     ~/.claude/settings.json = (kit base * VM overlay) with the two allow-lists UNIONED, REGENERATED
 #     every run so it stays in sync with the kit; the macOS host keeps the symlinked, locked-down profile.
