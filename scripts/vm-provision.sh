@@ -23,7 +23,10 @@ say "Provisioning the VM as a Claude Code dev box…"
 # /doctor then shows a cosmetic "sandbox: missing bubblewrap" note — expected and harmless.
 if has apt-get; then
   sudo apt-get update -qq >/dev/null 2>&1 || true
-  sudo apt-get install -y -qq git jq curl ca-certificates build-essential zsh shellcheck >/dev/null 2>&1 || warn "apt install issues"
+  # python3-venv gives stdlib `python3 -m venv` its `ensurepip` (Ubuntu splits it out); python3-pip
+  # for a system pip. `uv` (installed later) is still the recommended env tool, but many projects
+  # (esp. ones migrated from other agents) assume plain `python -m venv`.
+  sudo apt-get install -y -qq git jq curl ca-certificates build-essential zsh shellcheck python3-venv python3-pip >/dev/null 2>&1 || warn "apt install issues"
 fi
 # Make zsh the interactive login shell for this user (matches the host).
 if has zsh && [ "$(getent passwd "$(id -un)" | cut -d: -f7)" != "$(command -v zsh)" ]; then
