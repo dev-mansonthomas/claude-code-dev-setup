@@ -99,7 +99,7 @@ from the host.** When driving a project toward deployment:
   the VM. When ready, tell the user to run **`git-pr-merge --branch <branch> "<title>" "<body>"`** on
   the **host** — name the branch explicitly (you know it; the default is the host's current HEAD,
   which may differ). It's a kit tool (on `PATH`) that pushes → opens/reuses the PR → waits for CI →
-  squash-merges into the base → fast-forwards `main` → prunes. It writes `debug/git/git-pr-merge.json`
+  squash-merges into the base → fast-forwards that base branch (usually `main`) → prunes. It writes `debug/git/git-pr-merge.json`
   (a shared-mount path) that you then **`Read`** to confirm the merge / handle a CI failure. For a
   read-only view of GitHub vs local state, the user runs **`git-check`** → `debug/git/git-check.json`.
   Fallback only if those aren't installed: print the raw `git push` / `gh pr create` / `gh pr merge`.
@@ -126,7 +126,7 @@ from the host.** When driving a project toward deployment:
   (the PNG is still written). **Never** `playwright install chrome` (no arm64 Linux build → always
   fails). `CHROME_BIN` points at that Chromium (Angular Karma). Also
   present: `redis-cli` 8.x, JDK 21 + Maven 3.9, **Go**, **Rust** (rustup: cargo/rustc/clippy/rustfmt),
-  **.NET SDK** (LTS, `dotnet`), Node 24, `luacheck`, `fd`, `uv`, `gh`, `jq`, `shellcheck`, and
+  **.NET SDK** (LTS, `dotnet`), Node 24, `luacheck`, `fd`, `uv`, `jq`, `shellcheck`, and
   network/debug tools (dig, telnet, nc, tcpdump/tshark, ss, lsof, strace, htop, nmap, httpie, yq, grpcurl).
   **OpenTofu (`tofu`)** is here for **validate-only** work — `tofu fmt -check`, `tofu init -backend=false`,
   `tofu validate` (all credential-free). **Never** `tofu plan/apply/destroy` in the VM (needs cloud

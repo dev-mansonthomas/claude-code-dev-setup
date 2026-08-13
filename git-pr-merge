@@ -44,7 +44,7 @@ parse_args() {
       --poll)      POLL="${2:-8}"; shift 2 ;;
       --no-footer) FOOTER=0; shift ;;
       --no-stdout) STDOUT=0; shift ;;
-      -h|--help)   sed -n '2,14{/^# /p}' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+      -h|--help)   sed -n '2,14{/^# /p;}' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
       --) shift; break ;;
       -*) ERR_CODE=usage; ERR_MSG="unknown option: $1"; finish false 2 ;;
       *)  if [ "$pos" -eq 0 ]; then TITLE="$1"; else BODY="$1"; fi; pos=$((pos+1)); shift ;;
@@ -206,13 +206,20 @@ sync_prune() {
     BASE_UPDATED=true
   fi
   git_ fetch -p >/dev/null 2>&1 || true
-  # `gh pr merge --delete-branch` already removes the local branch (and checks out base); the -D is a
-  # fallback if it didn't (after a squash-merge plain `git branch -d` would refuse). Report on the
-  # ACTUAL state — the branch being gone — not on which command deleted it.
-  if [ -n "$BRANCH" ] && [ "$BRANCH" != "$BASE" ]; then
-    git_ branch -D "$BRANCH" >/dev/null 2>&1 || true
-    git_ show-ref --verify --quiet "refs/heads/$BRANCH" || DEL_LOCAL=true
+  # `gh pr merge --delete-branch` already removes the local branch (and checks out base) in the
+  # normal path. If the branch still exists locally — e.g. a RE-RUN after the PR already merged —
+  # only drop it when it has NO commits living solely on this local branch; otherwise a `-D` would
+  # silently destroy unpushed follow-up work. (`git branch -d` can't be used as the safe form: a
+  # squash-merge leaves the branch "unmerged" to git even when its content is in base, so it always
+  # refuses.) Report on the ACTUAL state — whether the branch is gone — not on which command ran.
+  if [ -n "$BRANCH" ] && [ "$BRANCH" != "$BASE" ] && git_ show-ref --verify --quiet "refs/heads/$BRANCH"; then
+    if [ -z "$(git_ rev-list "$BRANCH" --not --remotes 2>/dev/null)" ]; then
+      git_ branch -D "$BRANCH" >/dev/null 2>&1 || true
+    else
+      printf '⚠ kept local branch %s — it has commits not on any remote; not force-deleting (unpushed work preserved).\n' "$BRANCH" >&2
+    fi
   fi
+  git_ show-ref --verify --quiet "refs/heads/$BRANCH" 2>/dev/null || DEL_LOCAL=true
 }
 
 main() {

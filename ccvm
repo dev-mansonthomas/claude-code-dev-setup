@@ -18,12 +18,18 @@ TOKEN_FILE="${CC_TOKEN_FILE:-$HOME/.config/claude-code-dev-setup/oauth-token}"
 tok="${CLAUDE_CODE_OAUTH_TOKEN:-}"
 if [[ -z "$tok" && -r "$TOKEN_FILE" ]]; then tok="$(tr -d '[:space:]' < "$TOKEN_FILE")"; fi
 
+# Move the token into the VM over STDIN — never on a command line — so it can't be read from `ps` /
+# /proc/<pid>/cmdline on the host or in the VM. It lands in a tmpfs file (600); the launch command
+# loads it into the session env and shreds the file before Claude starts. No token → login prompt.
+VM_TOKFILE="/dev/shm/.ccvm-oauth-token"
+inject_token() { [ -n "$tok" ] || return 0; printf '%s' "$tok" | colima ssh -- sh -c "umask 077; cat > '$VM_TOKFILE'" >/dev/null 2>&1 || true; }
+# shellcheck disable=SC2016  # the $(cat …) must stay literal — it's evaluated remotely in the VM
+tok_prelude()  { [ -n "$tok" ] || return 0; printf 'export CLAUDE_CODE_OAUTH_TOKEN="$(cat %s 2>/dev/null)"; rm -f %s; ' "$VM_TOKFILE" "$VM_TOKFILE"; }
+
 # No arg → just drop into the VM.
 if [[ $# -eq 0 ]]; then
-  ssh_cmd=(colima ssh --)
-  if [[ -n "$tok" ]]; then ssh_cmd+=(env "CLAUDE_CODE_OAUTH_TOKEN=$tok"); fi
-  ssh_cmd+=(bash -lc "cd '$PROJECTS' 2>/dev/null || true; exec \"\$(command -v zsh || echo bash)\" -l")
-  exec "${ssh_cmd[@]}"
+  inject_token
+  exec colima ssh -- bash -lc "$(tok_prelude)cd '$PROJECTS' 2>/dev/null || true; exec \"\$(command -v zsh || echo bash)\" -l"
 fi
 
 # Resolve <project> to an absolute host path under ~/Projects (mounted at the same path in the VM).
@@ -53,7 +59,5 @@ echo "→ entering VM at $abs  (Claude Code runs inside the VM; edit on the host
 flags=" --permission-mode auto"
 if [[ -n "${CCVM_YOLO:-}" ]]; then flags=" --dangerously-skip-permissions"
 elif [[ -n "${CCVM_SAFE:-}" ]]; then flags=" --permission-mode acceptEdits"; fi
-ssh_cmd=(colima ssh --)
-if [[ -n "$tok" ]]; then ssh_cmd+=(env "CLAUDE_CODE_OAUTH_TOKEN=$tok"); fi
-ssh_cmd+=(bash -lc "cd '$abs' && exec claude$flags")
-exec "${ssh_cmd[@]}"
+inject_token
+exec colima ssh -- bash -lc "$(tok_prelude)cd '$abs' && exec claude$flags"

@@ -19,7 +19,9 @@ if ! CLAUDE="$(claude_bin)"; then
   exit 0
 fi
 
-mcp_exists() { "$CLAUDE" mcp list 2>/dev/null | grep -qi "^${1}\b\|[[:space:]]${1}[[:space:]]\|${1}:"; }
+# `claude mcp list` prints one "<name>: <cmd/url> - <status>" per server, so anchor on "<name>:" at
+# line start — an EXACT match (POSIX BRE, no GNU \b/\|). Avoids `redis` matching `redis-docs`.
+mcp_exists() { "$CLAUDE" mcp list 2>/dev/null | grep -qi "^${1}:"; }
 
 add_mcp() {
   local name="$1"; shift

@@ -23,7 +23,7 @@ parse_args() {
     case "$1" in
       --limit)     LIMIT="${2:-8}"; shift 2 ;;
       --no-stdout) STDOUT=0; shift ;;
-      -h|--help)   sed -n '2,9{/^# /p}' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+      -h|--help)   sed -n '2,9{/^# /p;}' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
       *) shift ;;
     esac
   done
