@@ -57,9 +57,12 @@ claude -p "…"     # headless (scripts/CI)
 | Need | Reach for |
 |---|---|
 | Current lib version/API | Context7 MCP — "use context7" |
-| Build/validate web UI | `frontend-design`, Playwright MCP, `playwright-test` |
+| Build/validate web UI | `frontend-design`, `react-best-practices`, `web-design-guidelines`, Playwright MCP, `playwright-test` |
 | Redis modeling/ops | `redis-core`, `redis-query-engine`, `redis-vector-search`, `redis-observability`, `redis-security` |
+| Official Redis docs | **redis-docs** MCP (`https://redis.io/mcp`) |
 | Query project's Redis | per-project Redis MCP (`.mcp.json`) |
+| Blocked/filtered web research | **obscura** MCP (VM-only stealth browser) — *fallback* after WebSearch/WebFetch |
+| TDD / planning / debug methodology | **superpowers** plugin (`/using-superpowers`) |
 | Terse output / compact CLI | `caveman`, `rtk-cli` |
 
 ## Security & git (non-negotiable)

@@ -33,7 +33,7 @@ Two tiers — pick per task:
 | | Where Claude runs | Use it for | Exposure |
 |---|---|---|---|
 | **Host** (Mac app / `claude`) | your macOS user account | trivial, trusted, low-risk edits & questions | **full** access to your account — only when you trust the prompt and aren't running untrusted code/deps |
-| **VM mode** *(default)* | inside the Colima Linux VM | real work: untrusted deps, builds, autonomous runs (`acceptEdits` + broad allow-list) | confined to the VM **+** the mounted `~/Projects` |
+| **VM mode** *(default)* | inside the Colima Linux VM | real work: untrusted deps, builds, autonomous runs (`--permission-mode auto` + broad allow-list) | confined to the VM **+** the mounted `~/Projects` |
 
 **What VM mode protects:** credential theft (SSH keys, keychain, cloud/API tokens, browser
 cookies) and destructive actions (mass deletion, ransomware-style writes) **can't reach the host** —
@@ -76,7 +76,7 @@ like working locally:
 | Friction | Removed by |
 |---|---|
 | Per-action permission prompts | starts in **`--permission-mode auto`** (the classifier still gates `rm -rf`, `terraform destroy`) |
-| No creds in the VM → push/PR/merge is a 6-command dance | **`git-pr-merge "<title>" "<body>"`** on the host: push → PR → CI → squash-merge → prune in one shot, and writes `debug/git/*.json` the VM Claude reads back |
+| No creds in the VM → push/PR/merge is a 6-command dance | **`git-pr-merge --branch <branch> "<title>" "<body>"`** on the host: push → PR → CI → squash-merge → prune in one shot, and writes `debug/git/*.json` the VM Claude reads back |
 | `Shift+Enter` submits (`/terminal-setup` can't run over SSH) | printed after `vm-up`: `Ctrl+J` (any terminal), or a one-time iTerm2 key mapping |
 | You don't notice when Claude finishes | a **terminal bell** crosses SSH (`preferredNotifChannel`) |
 | "Edit on host, run in VM" = sync hell? | `~/Projects` is a **shared mount** (virtiofs) — edit in your own editor; Claude/builds/tests run in the VM, same files |
@@ -120,7 +120,7 @@ So a change flows: **build + commit in the VM → you `git push` / PR / merge on
 Two **host** commands (installed on your `PATH` by `./01-setup.sh`) automate the push→PR→merge dance
 for solo repos. After Claude commits a branch in the VM, run on the host:
 ```bash
-git-pr-merge "<PR title>" "<PR body>"   # push branch → open/reuse PR → wait for CI → squash-merge --delete-branch → fast-forward main → prune
+git-pr-merge --branch <branch> "<PR title>" "<PR body>"   # push → open/reuse PR → wait for CI → squash-merge --delete-branch → fast-forward the base (usually main) → prune
 git-check                               # read-only snapshot: open PRs, recent merges, stale remote branches, recent main log
 ```
 Both write a JSON report to `debug/git/<tool>.json` (git-ignored) that the **VM Claude can read back**
@@ -170,9 +170,11 @@ That's it. `01-setup.sh` prepares the **host baseline**:
 
 1. **Preflight** — check macOS/brew/git/node, install `gh` `gitleaks` `uv` `jq`.
 2. **Claude Code** — install the CLI via the official native installer.
-3. **Skills** — install the Redis SA + official Redis + frontend-design skills.
-4. **MCP servers** — add Context7, Playwright, Sequential-Thinking (user scope).
-5. **Plugins** — show how to add marketplaces (interactive, optional).
+3. **Skills** — install Redis SA + official Redis + Anthropic (frontend-design, docx/pptx/xlsx,
+   skill-creator…) + Vercel (web-design-guidelines, react-best-practices) + file-search skills.
+4. **MCP servers** — add Context7, Playwright, Sequential-Thinking, and **redis-docs** (user scope;
+   **obscura** is registered in the VM).
+5. **Plugins** — install the **superpowers** plugin (official Anthropic marketplace).
 6. **Global config** — link `CLAUDE.md`, `settings.json`, the secret-guard hook,
    and the workflow slash commands into `~/.claude` (your existing files are
    backed up first).
@@ -211,8 +213,8 @@ rest of macOS.
 ccvm my-app                  # open VS Code on the host + a Claude session inside the VM
 ```
 `05-new-project.sh` auto-launches `ccvm` after scaffolding; monitoring (Grafana) runs in the same
-VM (no second VM). Inside the VM, Claude runs in `acceptEdits` with a broad allow-list — it
-auto-accepts edits and auto-runs the dev toolchain, so you work hands-off (see [docs/isolation.md](docs/isolation.md)).
+VM (no second VM). Inside the VM, Claude runs in `--permission-mode auto` (a safety classifier gates
+destructive ops) with a broad allow-list — it auto-runs the dev toolchain, so you work hands-off (see [docs/isolation.md](docs/isolation.md)).
 Full guide + caveats: **[docs/isolation.md](docs/isolation.md)**.
 
 ### Authenticate the VM once (`CLAUDE_CODE_OAUTH_TOKEN`)
@@ -466,6 +468,7 @@ backup the installer made:
 ```bash
 rm ~/.claude/CLAUDE.md ~/.claude/settings.json ~/.claude/hooks/git-secret-guard.sh
 rm ~/.claude/commands/{brainstorm,spec,plan-feature,ship,doc-sync}.md
+rm -f /opt/homebrew/bin/{ccvm,git-pr-merge,git-check}   # host CLIs linked by 03-vm-up / 01-setup
 ls ~/.claude/backups/      # restore anything you want from here
 ```
 
