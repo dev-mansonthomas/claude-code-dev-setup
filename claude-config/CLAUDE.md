@@ -139,6 +139,14 @@ from the host.** When driving a project toward deployment:
 - **Missing a tool?** If a command you need isn't installed in the VM, **don't silently work around
   it** — name the missing command/package and tell the user to add it to `scripts/vm-provision.sh`
   (then `./03-vm-up.sh`), so every future session has it too.
+- **Disk full / "no space left" in the VM?** The VM's **root FS is ~19 GB and SEPARATE from the
+  60 GB Docker disk** (`/mnt/lima-colima`), so caches under `~` and the scratchpad under `/tmp` fill
+  it, not Docker. Run **`vm-clean`** to reclaim space: it clears re-downloadable caches (npm, uv,
+  pip, Go, Cargo registry, Maven repo, .NET NuGet, apt) and stale Claude scratchpad (idle >60 min).
+  **Consequences:** the *next* build/install re-downloads those caches (a one-time slowdown), and any
+  temp files from idle sessions are gone. It **never** touches `~/Projects`, git, credentials, or
+  installed toolchains (rustup, Node, uv Pythons, Playwright browsers). `vm-clean --docker` also
+  prunes the Docker disk; `vm-clean --scratch-all` purges *all* scratchpad (incl. the live session).
 
 ## Documentation — two audiences, always
 
