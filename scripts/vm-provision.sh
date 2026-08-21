@@ -347,6 +347,12 @@ else
   warn "kit dir not found ($KIT) — skipped skills/config (is ~/Projects mounted?)."
 fi
 
+# --- vm-clean: a `vm-clean` command on PATH to reclaim space on the ~19 GB root FS ---------
+# The VM root is small and separate from the 60 GB Docker disk; caches under ~ and /tmp fill it.
+if [[ -n "$KIT" && -f "$KIT/scripts/vm-clean.sh" ]]; then
+  sudo ln -sfn "$KIT/scripts/vm-clean.sh" /usr/local/bin/vm-clean && ok "linked 'vm-clean' -> $KIT/scripts/vm-clean.sh"
+fi
+
 # --- pre-mark onboarding so the FIRST interactive `claude` skips the login/theme wizard ----
 # Auth comes from the CLAUDE_CODE_OAUTH_TOKEN that `ccvm` injects; without this flag the
 # first interactive run shows the onboarding (login method + theme) even when authenticated.
