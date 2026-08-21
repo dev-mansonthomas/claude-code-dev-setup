@@ -40,11 +40,11 @@ else
 fi
 
 # 2) Package-manager download caches — all re-fetched on next build/install.
-command -v npm    >/dev/null 2>&1 && npm cache clean --force        >/dev/null 2>&1 || true
-command -v uv     >/dev/null 2>&1 && uv cache clean                 >/dev/null 2>&1 || true
-command -v pip3   >/dev/null 2>&1 && pip3 cache purge               >/dev/null 2>&1 || true
-command -v go     >/dev/null 2>&1 && go clean -cache -modcache      >/dev/null 2>&1 || true
-command -v dotnet >/dev/null 2>&1 && dotnet nuget locals all --clear >/dev/null 2>&1 || true
+if command -v npm    >/dev/null 2>&1; then npm cache clean --force        >/dev/null 2>&1 || true; fi
+if command -v uv     >/dev/null 2>&1; then uv cache clean                 >/dev/null 2>&1 || true; fi
+if command -v pip3   >/dev/null 2>&1; then pip3 cache purge               >/dev/null 2>&1 || true; fi
+if command -v go     >/dev/null 2>&1; then go clean -cache -modcache      >/dev/null 2>&1 || true; fi
+if command -v dotnet >/dev/null 2>&1; then dotnet nuget locals all --clear >/dev/null 2>&1 || true; fi
 # Cargo: registry download cache only — keep ~/.cargo/bin and the ~/.rustup toolchains.
 rm -rf "$HOME"/.cargo/registry/cache "$HOME"/.cargo/registry/src 2>/dev/null || true
 # Maven: the local repo is a re-downloadable cache.
