@@ -347,10 +347,13 @@ else
   warn "kit dir not found ($KIT) — skipped skills/config (is ~/Projects mounted?)."
 fi
 
-# --- vm-clean: a `vm-clean` command on PATH to reclaim space on the ~19 GB root FS ---------
-# The VM root is small and separate from the 60 GB Docker disk; caches under ~ and /tmp fill it.
+# --- kit host-utility commands on PATH: vm-clean + skill-activate --------------------------
+# vm-clean reclaims space on the small root FS; skill-activate powers per-project /skills-review.
 if [[ -n "$KIT" && -f "$KIT/scripts/vm-clean.sh" ]]; then
-  sudo ln -sfn "$KIT/scripts/vm-clean.sh" /usr/local/bin/vm-clean && ok "linked 'vm-clean' -> $KIT/scripts/vm-clean.sh"
+  sudo ln -sfn "$KIT/scripts/vm-clean.sh" /usr/local/bin/vm-clean && ok "linked 'vm-clean'"
+fi
+if [[ -n "$KIT" && -f "$KIT/scripts/skill-activate.sh" ]]; then
+  sudo ln -sfn "$KIT/scripts/skill-activate.sh" /usr/local/bin/skill-activate && ok "linked 'skill-activate'"
 fi
 
 # --- pre-mark onboarding so the FIRST interactive `claude` skips the login/theme wizard ----
