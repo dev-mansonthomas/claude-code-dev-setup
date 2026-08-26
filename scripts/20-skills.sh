@@ -81,6 +81,25 @@ for entry in "${SKILL_SOURCES[@]}"; do
   done < <(find "$dir" -mindepth 2 -maxdepth "$maxd" -name SKILL.md -not -path '*/.git/*' 2>/dev/null)
 done
 
+# --- CLONE-ONLY domain packs: cloned but NOT linked → 0 context cost until activated. ----------
+# `/skills-review` + `skill-activate` link a relevant subset PER-PROJECT on demand (e.g. GCP work).
+# Format "<git-url>|<clone-dir>" — explicit dir since google/skills & vercel-labs/skills share the
+# basename "skills". (Shallow clone; the repo's `plugins/` submodules are intentionally not fetched.)
+CLONE_ONLY_SOURCES=(
+  "https://github.com/google/skills|google-skills"   # ~124 Google Cloud/GCP skills — activate via /skills-review
+)
+for entry in "${CLONE_ONLY_SOURCES[@]}"; do
+  url="${entry%%|*}"; cdir="${entry#*|}"; dir="$SRC_DIR/$cdir"
+  mkdir -p "$SRC_DIR"
+  if [[ -d "$dir/.git" ]]; then
+    git -C "$dir" pull --quiet --ff-only 2>/dev/null || warn "could not update $cdir (using existing clone)"
+  elif ! git clone --quiet --depth 1 "$url" "$dir" 2>/dev/null; then
+    warn "could not clone $url — skipping $cdir."; continue
+  fi
+  n=$(find "$dir" -mindepth 2 -name SKILL.md -not -path '*/.git/*' 2>/dev/null | wc -l | tr -d ' ')
+  ok "available (not linked): $cdir — $n skills; activate per-project with /skills-review"
+done
+
 ok "Skills done: $linked newly linked, $skipped source(s) already present."
 info "List: ls ~/.claude/skills   |   verify: ./02-doctor.sh"
 [[ -d "$SRC_DIR" ]] && info "Sources cloned in $SRC_DIR (update later: git -C $SRC_DIR/<repo> pull)."

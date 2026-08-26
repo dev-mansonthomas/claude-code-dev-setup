@@ -29,5 +29,5 @@ When you have enough, produce a **one-page brief** and save it to
 - Top risks & open questions
 - A rough first slice (the smallest thing worth building first)
 
-End by recommending the next step: run `/spec` on the first slice. Do **not**
-start building.
+End by recommending the next steps: run `/skills-review` to activate any domain skills the project
+needs (e.g. GCP), then `/spec` on the first slice. Do **not** start building.

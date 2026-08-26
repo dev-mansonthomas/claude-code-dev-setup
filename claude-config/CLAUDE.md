@@ -195,6 +195,12 @@ task matches one, invoke it yourself without being asked (you may also name one 
 - **Built-in reviews** → `/code-review`, `/security-review`, `/verify`.
 - **Discover / build skills** → `find-skills` (find an installable skill for a need),
   `skill-creator` (author or optimize your own).
+- **Domain skill packs, on demand (per-project)** → large packs (e.g. **`google/skills`**, ~124 GCP
+  skills) are **cloned but NOT loaded globally** — zero context cost until needed. Run **`/skills-review`**
+  (Claude reads the project, infers its domains, and proposes a small relevant subset), which activates
+  the confirmed skills **per-project** into `.claude/skills/` via **`skill-activate`** (`--list` /
+  `<name>…` / `--list-active` / `--deactivate`). Re-run `/skills-review` as the project evolves. Keep it
+  minimal — every activated skill adds its description to every session (token cost).
 
 ## Tech stack defaults (override per project)
 
