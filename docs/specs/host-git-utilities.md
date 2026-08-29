@@ -41,11 +41,15 @@ Testable criteria (`[ ]`):
 ## Inputs & outputs
 
 ### Invocation
-- `git-pr-merge [--branch <name>] [--base <name>] [--timeout <sec>] [--poll <sec>] [--no-footer] [--no-stdout] <title> [body]`
-  - `title` required (positional 1); `body` optional (positional 2). `--branch` defaults to the current
-    branch; `--base` defaults to the repo's default branch (`gh repo view --json defaultBranchRef`,
-    fallback `main`). `--timeout` default 600, `--poll` default 8 (seconds). `--no-footer` skips the
-    `🤖 Generated with Claude Code` body footer (appended by default to match kit convention).
+- `git-pr-merge [--branch <name>] [--base <name>] [--body-file <path>] [--timeout <sec>] [--poll <sec>] [--no-footer] [--no-stdout] <title> [body]`
+  - `title` required (positional 1). **PR body — resolved in precedence order: `--body-file <path>` >
+    inline `[body]` positional > the convention file `debug/git/pr-body.md`** (auto-read, then deleted
+    so a stale body is never reused). **Prefer a file** (`--body-file` or `debug/git/pr-body.md`) for any
+    non-trivial body: quotes/backticks/newlines in an inline body break the shell command an agent hands
+    the user to paste — this is why the CLAUDE.md workflow has the VM agent write `debug/git/pr-body.md`
+    and omit the inline body. `--branch` defaults to the current branch; `--base` defaults to the repo's
+    default branch (`gh repo view --json defaultBranchRef`, fallback `main`). `--timeout` default 600,
+    `--poll` default 8 (seconds). `--no-footer` skips the `🤖 Generated with Claude Code` body footer.
 - `git-check [--limit <N>] [--no-stdout]` — `--limit` default 8 (merged PRs & main-log depth).
 - Both are installed on `PATH` as bare commands (no `.sh`, like `ccvm`); because they're named
   `git-*`, `git merge-pr …` / `git check` also work as git subcommands.

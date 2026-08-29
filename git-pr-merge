@@ -4,10 +4,10 @@
 # -> fast-forward the base locally -> prune. Assumes /ship (tests/lint/…) already passed: it does NOT
 # commit and does NOT run a quality gate. Solo-repo assumptions (no review waits; never force-pushes).
 #
-# Usage: git-pr-merge [--branch <name>] [--base <name>] [--timeout <sec>] [--poll <sec>]
-#                     [--no-footer] [--no-stdout] <title> [body]
-#   <title>  PR title (required)        [body]   PR body (optional)
-#   --branch branch to ship (default: current)   --base  base branch (default: repo default)
+# Usage: git-pr-merge [--branch <name>] [--base <name>] [--body-file <path>] [--no-footer] <title> [body]
+#   <title> required. Body precedence: --body-file <path> > inline [body] > debug/git/pr-body.md (auto,
+#   consumed after read). PREFER a file for any non-trivial body — quotes/backticks in an inline body
+#   break the shell command an agent hands you to paste. --branch default current; --base repo default.
 #
 # Output: a JSON report (schemaVersion 1) to <repo>/debug/git/git-pr-merge.json AND stdout.
 # Exit codes: 0 ok | 2 usage | 3 preconditions | 4 push | 5 ci | 6 merge/conflict.
@@ -32,7 +32,7 @@ BASE_UPDATED=false; DEL_REMOTE=false; DEL_LOCAL=false
 ERR_CODE=""; ERR_MSG=""
 
 # --- args ------------------------------------------------------------------
-TITLE=""; BODY=""; FOOTER=1; STDOUT=1; POLL=8; TIMEOUT=600
+TITLE=""; BODY=""; BODY_FILE=""; FOOTER=1; STDOUT=1; POLL=8; TIMEOUT=600
 
 parse_args() {
   local pos=0
@@ -44,6 +44,7 @@ parse_args() {
       --poll)      POLL="${2:-8}"; shift 2 ;;
       --no-footer) FOOTER=0; shift ;;
       --no-stdout) STDOUT=0; shift ;;
+      --body-file) BODY_FILE="${2:-}"; shift 2 ;;
       -h|--help)   sed -n '2,14{/^# /p;}' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
       --) shift; break ;;
       -*) ERR_CODE=usage; ERR_MSG="unknown option: $1"; finish false 2 ;;
@@ -149,9 +150,27 @@ do_push() {
   PUSHED=true
 }
 
+# Resolve the PR body WITHOUT relying on shell-quoted argv — quotes/backticks in an inline body break
+# the command the VM agent hands the user to paste. Precedence: --body-file > inline positional > the
+# convention file debug/git/pr-body.md (consumed after reading, so a stale body is never reused).
+resolve_body() {
+  local root
+  if [ -n "$BODY_FILE" ]; then
+    [ -f "$BODY_FILE" ] || fail 2 usage "--body-file not found: $BODY_FILE"
+    BODY="$(cat "$BODY_FILE")"
+  elif [ -z "$BODY" ]; then
+    root="$(git_ rev-parse --show-toplevel 2>/dev/null || pwd)"
+    if [ -f "$root/debug/git/pr-body.md" ]; then
+      BODY="$(cat "$root/debug/git/pr-body.md")"
+      rm -f "$root/debug/git/pr-body.md"
+    fi
+  fi
+}
+
 ensure_pr() {
   [ "$PR_REUSED" = true ] && return 0
   local body url
+  resolve_body
   body="$BODY"
   if [ "$FOOTER" = 1 ]; then
     body="${body}
