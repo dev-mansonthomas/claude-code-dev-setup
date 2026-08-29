@@ -129,6 +129,13 @@ if ! has uv; then
   curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null 2>&1 || warn "uv install issue"
 fi
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+# ruff — the Python linter/formatter that the global CLAUDE.md defaults to (and settings.json already
+# allow-lists as `Bash(ruff:*)`). Install it as a uv tool so `ruff` is on PATH for any project.
+# mypy/pytest stay per-project (they need the project's deps), added there via `uv add --dev`.
+if has uv && ! has ruff; then
+  say "installing ruff (Python linter/formatter, uv tool)…"
+  uv tool install ruff >/dev/null 2>&1 || warn "ruff install failed (fallback: uvx ruff)."
+fi
 
 # --- gitleaks (Linux binary; powers the secret-scan hooks) -----------------
 if ! has gitleaks; then
