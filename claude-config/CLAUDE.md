@@ -130,7 +130,7 @@ from the host.** When driving a project toward deployment:
   fails). `CHROME_BIN` points at that Chromium (Angular Karma). Also
   present: `redis-cli` 8.x, JDK 21 + Maven 3.9, **Go**, **Rust** (rustup: cargo/rustc/clippy/rustfmt),
   **.NET SDK** (LTS, `dotnet`), Node 24, Python 3.12 (`venv` + `pip`; `uv` for envs) + `ruff`
-  (linter/formatter), `luacheck`, `fd`, `uv`, `jq`, `shellcheck`, and
+  (linter/formatter), `luacheck`, `fd`, `ast-grep` (structural code search), `uv`, `jq`, `shellcheck`, and
   network/debug tools (dig, telnet, nc, tcpdump/tshark, ss, lsof, strace, htop, nmap, httpie, yq, grpcurl).
   **OpenTofu (`tofu`)** is here for **validate-only** work — `tofu fmt -check`, `tofu init -backend=false`,
   `tofu validate` (all credential-free). **Never** `tofu plan/apply/destroy` in the VM (needs cloud
