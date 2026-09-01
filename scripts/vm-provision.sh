@@ -26,7 +26,7 @@ if has apt-get; then
   # python3-venv gives stdlib `python3 -m venv` its `ensurepip` (Ubuntu splits it out); python3-pip
   # for a system pip. `uv` (installed later) is still the recommended env tool, but many projects
   # (esp. ones migrated from other agents) assume plain `python -m venv`.
-  sudo apt-get install -y -qq git jq curl ca-certificates build-essential zsh shellcheck python3-venv python3-pip >/dev/null 2>&1 || warn "apt install issues"
+  sudo apt-get install -y -qq git jq curl ca-certificates build-essential zsh shellcheck python3-venv python3-pip unzip >/dev/null 2>&1 || warn "apt install issues"
 fi
 # Make zsh the interactive login shell for this user (matches the host).
 if has zsh && [ "$(getent passwd "$(id -un)" | cut -d: -f7)" != "$(command -v zsh)" ]; then
@@ -121,6 +121,25 @@ if ! has fd && has apt-get; then
   else
     warn "fd-find install failed."
   fi
+fi
+
+# --- ast-grep (structural code search/rewrite on the AST; pairs with rg/fd for the file-search skill)
+# Prebuilt binary from GitHub releases (a .zip — unzip via python3 to avoid an extra dep). Install ONLY
+# the `ast-grep` binary: the archive also ships an `sg` alias that would collide with util-linux `sg`.
+if ! has ast-grep; then
+  case "$(uname -m)" in aarch64|arm64) agarch="aarch64";; *) agarch="x86_64";; esac
+  agver="0.45.3"
+  say "installing ast-grep ${agver} (${agarch}-linux)…"
+  agt="$(mktemp -d)"
+  if curl -fsSL "https://github.com/ast-grep/ast-grep/releases/download/${agver}/app-${agarch}-unknown-linux-gnu.zip" -o "$agt/ag.zip" 2>/dev/null \
+     && python3 -m zipfile -e "$agt/ag.zip" "$agt/" 2>/dev/null \
+     && [ -f "$agt/ast-grep" ] \
+     && sudo install "$agt/ast-grep" /usr/local/bin/ast-grep 2>/dev/null; then
+    ok "ast-grep ${agver}"
+  else
+    warn "ast-grep install failed (optional; the file-search skill's structural search won't work)."
+  fi
+  rm -rf "$agt"
 fi
 
 # --- uv --------------------------------------------------------------------
