@@ -7,6 +7,7 @@
     "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317"
   },
   "includeCoAuthoredBy": true,
+  "outputStyle": "Concise",
   "permissions": {
     "allow": [
       "Read",
