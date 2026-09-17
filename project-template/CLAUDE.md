@@ -34,6 +34,9 @@ TODO
 - Tests are written first. Don't mark work done without green tests.
 - Verify library versions/APIs with the **Context7 MCP** before adding deps.
 - Conventional Commits; branch off `main`; commit/push only when asked.
+- **Stay inside this project.** Modify only resources in this repo; other projects/paths are
+  **read-only** unless the user explicitly says otherwise, naming the target. (Global
+  `~/.claude/CLAUDE.md` → *Non-negotiables*.)
 - **Cloud resources** (whenever you provision any): every resource carries an `owner`
   label/tag. Its value is **read from a `.env` file, never hard-coded** — declare a Terraform
   `variable "owner"` fed by `TF_VAR_owner` (set in `.env`, which is git-ignored). Apply it
