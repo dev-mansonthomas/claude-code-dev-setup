@@ -7,6 +7,13 @@
 set -uo pipefail
 KIT="${1:-}"
 
+# Shared version pins (single source of truth — see scripts/versions.env).
+if [ -f "${KIT}/scripts/versions.env" ]; then
+  # shellcheck source=/dev/null
+  . "${KIT}/scripts/versions.env"
+fi
+: "${PW_MCP_VERSION:=0.0.81}"  # fallback if versions.env is missing
+
 say(){  printf '\033[34m•\033[0m %s\n' "$*"; }
 ok(){   printf '\033[32m✓\033[0m %s\n' "$*"; }
 warn(){ printf '\033[33m!\033[0m %s\n' "$*" >&2; }
@@ -199,9 +206,22 @@ fi
 # system google-chrome (amd64-only) and Ubuntu's chromium is a snap, so we reuse Playwright's build.
 # Fonts (emoji + CJK) stop screenshots rendering international text as boxes.
 if has npx; then
-  say "installing Playwright browsers (chromium/firefox/webkit) + system libs…"
-  npx --yes playwright@latest install --with-deps chromium firefox webkit >/dev/null 2>&1 \
-    || warn "Playwright browser/deps install failed (browser tests may not launch)."
+  # ONE pinned Playwright serves BOTH the Playwright MCP and the ad-hoc `playwright` CLI, so the
+  # cached browser revisions can never drift from what either path requests ("Executable doesn't
+  # exist"). @playwright/mcp is the single source of truth (it pins an ALPHA Playwright build); we
+  # read that exact version, install it GLOBALLY, and download its browsers. Bump via versions.env.
+  pw_ver="$(npm view "@playwright/mcp@${PW_MCP_VERSION}" dependencies.playwright 2>/dev/null | tr -d '^~ ')"
+  if [ -n "$pw_ver" ]; then
+    say "installing Playwright ${pw_ver} (matches @playwright/mcp@${PW_MCP_VERSION}) + browsers + system libs…"
+    sudo npm install -g "playwright@${pw_ver}" >/dev/null 2>&1 \
+      || warn "global playwright@${pw_ver} install failed (the ad-hoc CLI path may miss it)."
+    playwright install --with-deps chromium firefox webkit >/dev/null 2>&1 \
+      || warn "Playwright browser/deps install failed (browser tests may not launch)."
+  else
+    warn "could not resolve @playwright/mcp@${PW_MCP_VERSION}'s Playwright version — falling back to playwright@latest (may drift from the MCP)."
+    npx --yes playwright@latest install --with-deps chromium firefox webkit >/dev/null 2>&1 \
+      || warn "Playwright browser/deps install failed (browser tests may not launch)."
+  fi
   sudo corepack enable >/dev/null 2>&1 || true
   sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq fonts-noto-color-emoji fonts-noto-cjk >/dev/null 2>&1 || true
   # Expose Playwright's Chromium as a stable system Chrome (CHROME_BIN) for Angular Karma / ng test.
@@ -262,6 +282,147 @@ if ! has tofu; then
     warn "OpenTofu install failed (optional; IaC validation won't run in the VM)."
   fi
   rm -rf "$tft"
+fi
+
+# --- HashiCorp Packer (machine-image builder) — VALIDATE-ONLY in the VM ---------------------
+# Same posture as tofu: `packer fmt`, `packer validate`, `packer init` are credential-free
+# build-time checks and run here. `packer build` provisions real cloud images (needs cloud creds),
+# so it stays on the HOST (deploy side). Pinned zip from releases.hashicorp.com + its SHA256SUMS.
+PACKER_VERSION="1.16.0"
+if ! has packer; then
+  case "$(uname -m)" in aarch64|arm64) pkarch="arm64";; *) pkarch="amd64";; esac
+  say "installing Packer ${PACKER_VERSION} (${pkarch}-linux; fmt/validate/init in the VM, build stays on the host)…"
+  pkt="$(mktemp -d)"; pkzip="packer_${PACKER_VERSION}_linux_${pkarch}.zip"
+  if curl -fsSL "https://releases.hashicorp.com/packer/${PACKER_VERSION}/${pkzip}" -o "$pkt/$pkzip" 2>/dev/null \
+     && curl -fsSL "https://releases.hashicorp.com/packer/${PACKER_VERSION}/packer_${PACKER_VERSION}_SHA256SUMS" -o "$pkt/SHA256SUMS" 2>/dev/null \
+     && ( cd "$pkt" && grep "$pkzip" SHA256SUMS | sha256sum -c - >/dev/null 2>&1 ) \
+     && unzip -o "$pkt/$pkzip" packer -d "$pkt" >/dev/null 2>&1 \
+     && sudo install "$pkt/packer" /usr/local/bin/packer 2>/dev/null; then
+    ok "Packer ${PACKER_VERSION}"
+  else
+    warn "Packer install failed (optional; image-template validation won't run in the VM)."
+  fi
+  rm -rf "$pkt"
+fi
+
+# --- kubectl (Kubernetes CLI) — CLIENT-SIDE / VALIDATE-ONLY in the VM -----------------------
+# Client-side work is credential-free: `kubectl --dry-run=client`, `kubectl kustomize`, schema
+# checks. Talking to a live cluster needs a kubeconfig with creds, so `apply`/`get` against real
+# clusters stay on the HOST (deploy side). Official binary + vendor sha256, always the latest stable.
+if ! has kubectl; then
+  case "$(uname -m)" in aarch64|arm64) karch="arm64";; *) karch="amd64";; esac
+  kver="$(curl -fsSL https://dl.k8s.io/release/stable.txt 2>/dev/null | head -1)"
+  if [ -n "$kver" ]; then
+    say "installing kubectl ($kver, ${karch})…"
+    kt="$(mktemp -d)"
+    if curl -fsSL "https://dl.k8s.io/release/${kver}/bin/linux/${karch}/kubectl" -o "$kt/kubectl" 2>/dev/null \
+       && curl -fsSL "https://dl.k8s.io/release/${kver}/bin/linux/${karch}/kubectl.sha256" -o "$kt/kubectl.sha256" 2>/dev/null \
+       && printf '%s  %s\n' "$(cat "$kt/kubectl.sha256")" "$kt/kubectl" | sha256sum -c - >/dev/null 2>&1 \
+       && sudo install "$kt/kubectl" /usr/local/bin/kubectl 2>/dev/null; then
+      ok "kubectl $kver"
+    else
+      warn "kubectl install failed (optional; K8S client-side checks won't run in the VM)."
+    fi
+    rm -rf "$kt"
+  else
+    warn "could not resolve the latest kubectl version (skipping)."
+  fi
+fi
+
+# --- Helm (Kubernetes package manager) — TEMPLATE/LINT-ONLY in the VM -----------------------
+# Credential-free: `helm template`, `helm lint`, `helm dependency build`, `helm package`.
+# `helm install/upgrade` needs a cluster kubeconfig, so it stays on the HOST (deploy side).
+# Tarball from get.helm.sh + its published .sha256sum; version resolved from the GitHub API.
+if ! has helm; then
+  case "$(uname -m)" in aarch64|arm64) harch="arm64";; *) harch="amd64";; esac
+  hver="$(curl -fsSL https://api.github.com/repos/helm/helm/releases/latest 2>/dev/null | jq -r '.tag_name // empty')"
+  if [ -n "$hver" ]; then
+    say "installing Helm ($hver, ${harch})…"
+    ht="$(mktemp -d)"; htar="helm-${hver}-linux-${harch}.tar.gz"
+    if curl -fsSL "https://get.helm.sh/${htar}" -o "$ht/$htar" 2>/dev/null \
+       && curl -fsSL "https://get.helm.sh/${htar}.sha256sum" -o "$ht/$htar.sha256sum" 2>/dev/null \
+       && ( cd "$ht" && sha256sum -c "$htar.sha256sum" >/dev/null 2>&1 ) \
+       && tar -xzf "$ht/$htar" -C "$ht" "linux-${harch}/helm" 2>/dev/null \
+       && sudo install "$ht/linux-${harch}/helm" /usr/local/bin/helm 2>/dev/null; then
+      ok "Helm $hver"
+    else
+      warn "Helm install failed (optional; chart templating/linting won't run in the VM)."
+    fi
+    rm -rf "$ht"
+  else
+    warn "could not resolve the latest Helm version (skipping)."
+  fi
+fi
+
+# --- kubeconform (offline manifest validation against K8S / CRD JSON schemas) ---------------
+# Credential-free: validates rendered manifests / Helm output against the K8S API schemas and
+# custom CRDs (e.g. the Redis Enterprise operator's), the K8S analogue of `tofu validate`.
+if ! has kubeconform; then
+  kcver="v0.8.0"; case "$(uname -m)" in aarch64|arm64) kcarch="arm64";; *) kcarch="amd64";; esac
+  say "installing kubeconform ${kcver} (${kcarch}-linux)…"
+  kct="$(mktemp -d)"; kctar="kubeconform-linux-${kcarch}.tar.gz"
+  if curl -fsSL "https://github.com/yannh/kubeconform/releases/download/${kcver}/${kctar}" -o "$kct/$kctar" 2>/dev/null \
+     && curl -fsSL "https://github.com/yannh/kubeconform/releases/download/${kcver}/CHECKSUMS" -o "$kct/CHECKSUMS" 2>/dev/null \
+     && ( cd "$kct" && grep "$kctar" CHECKSUMS | sha256sum -c - >/dev/null 2>&1 ) \
+     && tar -xzf "$kct/$kctar" -C "$kct" kubeconform 2>/dev/null \
+     && sudo install "$kct/kubeconform" /usr/local/bin/kubeconform 2>/dev/null; then
+    ok "kubeconform ${kcver}"
+  else
+    warn "kubeconform install failed (optional; offline manifest validation won't run in the VM)."
+  fi
+  rm -rf "$kct"
+fi
+
+# --- helm-docs (generate a chart's values README from templates) — Helm chart authoring -----
+if ! has helm-docs; then
+  hdver="$(curl -fsSL https://api.github.com/repos/norwoodj/helm-docs/releases/latest 2>/dev/null | jq -r '.tag_name // empty')"
+  case "$(uname -m)" in aarch64|arm64) hdarch="arm64";; *) hdarch="x86_64";; esac
+  if [ -n "$hdver" ]; then
+    say "installing helm-docs ${hdver} (${hdarch}-linux)…"
+    hdt="$(mktemp -d)"; hdtar="helm-docs_${hdver#v}_Linux_${hdarch}.tar.gz"
+    if curl -fsSL "https://github.com/norwoodj/helm-docs/releases/download/${hdver}/${hdtar}" -o "$hdt/$hdtar" 2>/dev/null \
+       && curl -fsSL "https://github.com/norwoodj/helm-docs/releases/download/${hdver}/checksums.txt" -o "$hdt/checksums.txt" 2>/dev/null \
+       && ( cd "$hdt" && grep "$hdtar" checksums.txt | sha256sum -c - >/dev/null 2>&1 ) \
+       && tar -xzf "$hdt/$hdtar" -C "$hdt" helm-docs 2>/dev/null \
+       && sudo install "$hdt/helm-docs" /usr/local/bin/helm-docs 2>/dev/null; then
+      ok "helm-docs ${hdver}"
+    else
+      warn "helm-docs install failed (optional; chart README generation won't run in the VM)."
+    fi
+    rm -rf "$hdt"
+  else
+    warn "could not resolve the latest helm-docs version (skipping)."
+  fi
+fi
+
+# --- chart-testing (ct: lint + install-test Helm charts, for chart CI) — Helm chart authoring
+# `ct lint`'s yaml-lint + values-schema steps shell out to yamllint + yamale (installed below via
+# uv) and to helm/kubectl (above). Its default lint config + chart schema go to /etc/ct.
+if ! has ct; then
+  ctver="$(curl -fsSL https://api.github.com/repos/helm/chart-testing/releases/latest 2>/dev/null | jq -r '.tag_name // empty')"
+  case "$(uname -m)" in aarch64|arm64) ctarch="arm64";; *) ctarch="amd64";; esac
+  if [ -n "$ctver" ]; then
+    say "installing chart-testing (ct) ${ctver} (${ctarch}-linux)…"
+    ctt="$(mktemp -d)"; cttar="chart-testing_${ctver#v}_linux_${ctarch}.tar.gz"
+    if curl -fsSL "https://github.com/helm/chart-testing/releases/download/${ctver}/${cttar}" -o "$ctt/$cttar" 2>/dev/null \
+       && curl -fsSL "https://github.com/helm/chart-testing/releases/download/${ctver}/checksums.txt" -o "$ctt/checksums.txt" 2>/dev/null \
+       && ( cd "$ctt" && grep "$cttar" checksums.txt | sha256sum -c - >/dev/null 2>&1 ) \
+       && tar -xzf "$ctt/$cttar" -C "$ctt" 2>/dev/null \
+       && sudo install "$ctt/ct" /usr/local/bin/ct 2>/dev/null; then
+      sudo mkdir -p /etc/ct 2>/dev/null || true
+      sudo cp "$ctt"/etc/*.yaml /etc/ct/ 2>/dev/null || true
+      if has uv; then
+        uv tool install yamllint >/dev/null 2>&1 || warn "yamllint install failed (ct's yaml-lint step won't run)."
+        uv tool install yamale   >/dev/null 2>&1 || warn "yamale install failed (ct's values-schema step won't run)."
+      fi
+      ok "chart-testing (ct) ${ctver}"
+    else
+      warn "chart-testing install failed (optional; chart lint/install-test won't run in the VM)."
+    fi
+    rm -rf "$ctt"
+  else
+    warn "could not resolve the latest chart-testing version (skipping)."
+  fi
 fi
 
 # --- Go toolchain (official tarball — apt lags; go.dev/VERSION is always the latest stable) --
