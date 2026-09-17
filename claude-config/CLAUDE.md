@@ -127,7 +127,10 @@ from the host.** When driving a project toward deployment:
   conclude "Playwright is broken" from raw `chromium --headless --screenshot` / `--dump-dom` — those
   CLI flags are finicky and print a harmless `DBus`/`UPower ServiceUnknown` error even on success
   (the PNG is still written). **Never** `playwright install chrome` (no arm64 Linux build → always
-  fails). `CHROME_BIN` points at that Chromium (Angular Karma). Also
+  fails). Don't `npx playwright@latest install` either — the Playwright **CLI and MCP are pinned to
+  one version** (`scripts/versions.env`, currently an alpha the MCP requires) so the cached browser
+  revisions match both paths; `@latest` re-introduces the "Executable doesn't exist" drift.
+  `CHROME_BIN` points at that Chromium (Angular Karma). Also
   present: `redis-cli` 8.x, JDK 21 + Maven 3.9, **Go**, **Rust** (rustup: cargo/rustc/clippy/rustfmt),
   **.NET SDK** (LTS, `dotnet`), Node 24, Python 3.12 (`venv` + `pip`; `uv` for envs) + `ruff`
   (linter/formatter), `luacheck`, `fd`, `ast-grep` (structural code search), `uv`, `jq`, `shellcheck`, and
@@ -135,6 +138,18 @@ from the host.** When driving a project toward deployment:
   **OpenTofu (`tofu`)** is here for **validate-only** work — `tofu fmt -check`, `tofu init -backend=false`,
   `tofu validate` (all credential-free). **Never** `tofu plan/apply/destroy` in the VM (needs cloud
   creds + backend state) — that's host/deploy-side.
+  **HashiCorp Packer (`packer`)** follows the same rule: `packer fmt`, `packer validate`, `packer init`
+  (credential-free) run here; **never** `packer build` in the VM (provisions real cloud images with
+  creds) — host/deploy-side.
+  **Kubernetes: `kubectl` + `helm` + `kubeconform`** — also **client/validate-only** in the VM (same
+  posture as tofu). Credential-free work runs here: `helm template`/`lint`/`dependency build`/`package`,
+  `kubectl kustomize`, `kubectl … --dry-run=client`, and `kubeconform` (validate rendered manifests /
+  Helm output against K8S + CRD schemas, e.g. the Redis Enterprise operator's). **Never** run
+  `helm install/upgrade` or `kubectl apply/get` against a **live cluster** in the VM (needs a
+  kubeconfig with creds) — and there are **no `gcloud`/`aws`/`az`/`eksctl` CLIs in the VM** by design;
+  authenticating to a cluster and applying to it is **host/deploy-side**. For **Helm chart authoring**
+  the VM also has **`helm-docs`** (generate the values README) and **`ct`** (chart-testing: `ct lint` /
+  `ct install`; its yaml-lint + values-schema steps use bundled `yamllint`/`yamale`, config in `/etc/ct`).
   **`obscura`** (stealth headless browser, its own MCP, VM-only) is a **fallback** for web research —
   default to `WebSearch`/`WebFetch`, and switch to the **obscura** MCP only when a site blocks /
   filters / CAPTCHAs you, or a page needs JS rendering. It's not the default path. Respect

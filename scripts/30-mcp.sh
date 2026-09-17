@@ -11,6 +11,13 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
 source "$HERE/lib.sh"
+# Shared version pins (single source of truth — see versions.env). Keeps the Playwright MCP version
+# in lockstep with the browsers vm-provision.sh installs for it.
+if [ -f "$HERE/versions.env" ]; then
+  # shellcheck source=/dev/null
+  . "$HERE/versions.env"
+fi
+: "${PW_MCP_VERSION:=0.0.81}"
 
 step "MCP servers (user scope)"
 
@@ -53,7 +60,10 @@ fi
 # --browser chromium: use Playwright's bundled Chromium (installed by vm-provision). WITHOUT this the
 # MCP defaults to the "chrome" channel (branded Google Chrome), which has NO arm64 Linux build → the
 # MCP fails to launch a browser in the VM. (Re-run needs a fresh register; add_mcp skips if it exists.)
-add_mcp playwright npx -y @playwright/mcp@latest --browser chromium
+# PINNED (not @latest): vm-provision installs the browsers for THIS exact version, so the two can't
+# drift. Bump both together via scripts/versions.env. If a stale @latest is already registered from a
+# previous run, re-register: `claude mcp remove playwright -s user && ./01-setup.sh` (or ./03-vm-up.sh).
+add_mcp playwright npx -y "@playwright/mcp@${PW_MCP_VERSION}" --browser chromium
 
 # --- Sequential thinking ---------------------------------------------------
 add_mcp sequential-thinking npx -y @modelcontextprotocol/server-sequential-thinking
