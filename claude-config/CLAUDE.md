@@ -56,6 +56,18 @@ missing questions about the **goal**, then proceed.
   — do not rely on training memory for versions or APIs.
 - **Read before you edit.** Understand the existing pattern; reuse utilities that
   already exist instead of adding parallel ones.
+- **Stay inside the current project; never mutate shared infrastructure uninvited.** Only create,
+  edit, delete, or run write/`git`/deploy operations on resources **within the current project** —
+  the repo that contains the working directory. Everything outside it is **read-only**: reading,
+  searching, and inspecting other repos or paths is fine, but **never modify** them (files, git
+  history, config, or deployed resources) without an **explicit, per-request** confirmation from the
+  user that names the target. This explicitly includes the **shared Colima VM's own setup** —
+  installing OS packages, adding apt repos/keyrings, installing global tools or Packer/Terraform
+  plugins, changing system config: **don't do it live**, even when a task says a tool "must be
+  available now" (that's a request to *make it available*, not authorization to hand-install it; the
+  correct path is the kit — see *Missing a tool?* in the VM section). If a task appears to require
+  any of this, **stop and ask**; don't infer permission from the task. (Standing exception: when the
+  user is iterating on `claude-code-dev-setup` itself, editing that kit from another cwd is expected.)
 
 ## Performance
 
@@ -139,9 +151,13 @@ from the host.** When driving a project toward deployment:
   default to `WebSearch`/`WebFetch`, and switch to the **obscura** MCP only when a site blocks /
   filters / CAPTCHAs you, or a page needs JS rendering. It's not the default path. Respect
   `robots.txt`, rate limits, and each site's ToS; don't use it against sites that forbid scraping.
-- **Missing a tool?** If a command you need isn't installed in the VM, **don't silently work around
-  it** — name the missing command/package and tell the user to add it to `scripts/vm-provision.sh`
-  (then `./03-vm-up.sh`), so every future session has it too.
+- **Missing a tool? Ask — don't install it into the VM yourself.** The VM is **shared setup owned by
+  the kit**, not per-project scratch. If a command you need isn't installed, **stop, name the missing
+  command/package**, and tell the user to add it to `scripts/vm-provision.sh` in `claude-code-dev-setup`
+  (then `./03-vm-up.sh`), so every future session has it. **Never** `apt install`, add a repo/keyring,
+  or `packer init`/install a global plugin by hand — even if the task says the tool "must be available
+  now": mutating the VM's setup needs **explicit user confirmation**, and a hand-installed tool
+  vanishes on the next VM rebuild anyway, so it must live in the provisioner regardless.
 - **Disk full / "no space left" in the VM?** The VM's **root FS is ~19 GB and SEPARATE from the
   60 GB Docker disk** (`/mnt/lima-colima`), so caches under `~` and the scratchpad under `/tmp` fill
   it, not Docker. Run **`vm-clean`** to reclaim space: it clears re-downloadable caches (npm, uv,
