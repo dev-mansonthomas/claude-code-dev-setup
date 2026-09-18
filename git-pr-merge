@@ -24,8 +24,8 @@ TOOL="git-pr-merge"; SCHEMA=1
 
 # --- accumulated state (emitted by finish) ---------------------------------
 REPO=""; BASE=""; BRANCH=""
-PUSHED=false; DIRTY=false
-PR_NUMBER=""; PR_URL=""; PR_REUSED=false; PR_CREATED=false
+PUSHED=false; DIRTY=false; PUSHED_SHA=""
+PR_NUMBER=""; PR_URL=""; PR_REUSED=false
 CI=""; CHECKS='[]'; FAILING='[]'; LOGS_CMD=""
 MERGED=false; ALREADY_MERGED=false; MERGED_SHA=""
 BASE_UPDATED=false; DEL_REMOTE=false; DEL_LOCAL=false
@@ -33,6 +33,8 @@ ERR_CODE=""; ERR_MSG=""
 
 # --- args ------------------------------------------------------------------
 TITLE=""; BODY=""; BODY_FILE=""; FOOTER=1; STDOUT=1; POLL=8; TIMEOUT=600
+EMPTY_GRACE=3  # polls to keep waiting when the pushed SHA is the PR head but no checks exist yet,
+               # before concluding the repo has no CI (avoids merging past a run about to register).
 
 parse_args() {
   local pos=0
@@ -68,6 +70,7 @@ finish() {
     --arg reportPath "debug/git/$TOOL.json" \
     --argjson pushed "$PUSHED" --argjson dirty "$DIRTY" \
     --arg prNumber "$PR_NUMBER" --arg prUrl "$PR_URL" --argjson prReused "$PR_REUSED" \
+    --arg headSha "$PUSHED_SHA" \
     --arg ci "$CI" --argjson checks "$CHECKS" --argjson failing "$FAILING" --arg logsCmd "$LOGS_CMD" \
     --argjson merged "$MERGED" --argjson alreadyMerged "$ALREADY_MERGED" --arg mergedSha "$MERGED_SHA" \
     --argjson baseUpdated "$BASE_UPDATED" --argjson delRemote "$DEL_REMOTE" --argjson delLocal "$DEL_LOCAL" \
@@ -80,6 +83,7 @@ finish() {
       reportPath: $reportPath,
       pushed: $pushed, workingTreeDirty: $dirty,
       pr: { number: ($prNumber | if . == "" then null else tonumber end), url: ($prUrl|nn), reused: $prReused },
+      headSha: ($headSha|nn),
       ci: ($ci|nn), checks: $checks, failingChecks: $failing, logsCmd: ($logsCmd|nn),
       merged: $merged, alreadyMerged: $alreadyMerged, mergedSha: ($mergedSha|nn),
       baseUpdated: $baseUpdated, branchDeleted: { remote: $delRemote, local: $delLocal }
@@ -148,6 +152,9 @@ do_push() {
   git_ push -u origin "$BRANCH" >/dev/null 2>&1 || \
     fail 4 push "git push rejected (remote ahead? resolve manually — never force-pushed)"
   PUSHED=true
+  # Remember exactly what we pushed so poll_ci waits for CI on THIS commit (see the SHA gate) and
+  # never reads the previous commit's run during the push→checks-registration window.
+  PUSHED_SHA="$(git_ rev-parse HEAD 2>/dev/null || echo "")"
 }
 
 # Resolve the PR body WITHOUT relying on shell-quoted argv — quotes/backticks in an inline body break
@@ -179,18 +186,31 @@ ensure_pr() {
   fi
   url="$(gh_ pr create --base "$BASE" --head "$BRANCH" --title "$TITLE" --body "$body" 2>/dev/null)" || \
     fail 6 merge "gh pr create failed"
-  PR_URL="$url"; PR_CREATED=true
+  PR_URL="$url"
   PR_NUMBER="$(gh_ pr view "$BRANCH" --json number -q .number 2>/dev/null || echo "")"
 }
 
 poll_ci() {
-  local waited=0 raw grace_used=0 link runid
+  local waited=0 raw grace_used=0 link runid head_oid
   while :; do
+    # SHA gate: `gh pr checks` reports whatever GitHub currently considers the PR head. Right after a
+    # push there's a window where the head still points at the PREVIOUS commit (or its run), so a
+    # naive read returns the old run's result — the push→checks race. Don't trust checks until GitHub
+    # confirms the PR head is the exact commit we just pushed.
+    if [ -n "$PUSHED_SHA" ]; then
+      head_oid="$(gh_ pr view "$PR_NUMBER" --json headRefOid -q .headRefOid 2>/dev/null || echo "")"
+      if [ "$head_oid" != "$PUSHED_SHA" ]; then
+        if [ "$waited" -ge "$TIMEOUT" ]; then CI=timeout; return 0; fi
+        sleep_ "$POLL"; waited=$((waited+POLL)); continue
+      fi
+    fi
     raw="$(gh_ pr checks "$PR_NUMBER" --json name,state,bucket,link 2>/dev/null || echo "")"
     if [ -z "$raw" ] || [ "$raw" = "[]" ]; then
-      # Just-created PRs can briefly report no checks before CI registers — grace once.
-      if [ "$PR_CREATED" = true ] && [ "$grace_used" = 0 ]; then
-        grace_used=1; sleep_ "$POLL"; waited=$((waited+POLL)); continue
+      # Head is our pushed SHA but no checks yet: the run may not have registered. Grace a few polls
+      # before concluding the repo has NO CI — so we never merge past a run that's about to start
+      # (applies to reused PRs too, not just freshly created ones).
+      if [ "$grace_used" -lt "$EMPTY_GRACE" ]; then
+        grace_used=$((grace_used+1)); sleep_ "$POLL"; waited=$((waited+POLL)); continue
       fi
       CI=none; CHECKS='[]'; return 0
     fi
