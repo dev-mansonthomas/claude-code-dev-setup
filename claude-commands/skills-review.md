@@ -25,8 +25,15 @@ Do this:
    `cloud-build-basics`, a `cloud-logging`/`cloud-monitoring` skill; add a GCP-database skill only if
    the project actually uses that database. **Never bulk-activate a whole category** — that's the
    token bloat we're avoiding. One line of justification per proposed skill.
-   - If the project needs a skill that isn't in the local packs, point to the **`find-skills`** skill
-     to discover installable ones, rather than guessing.
+   - **Not in the local packs?** Discover it on **[skills.sh](https://skills.sh)** — the Agent Skills
+     directory (browse/search the capability; each entry maps to a GitHub repo). Propose the specific
+     skill by its `owner/repo` with one line of justification, and on the user's **yes** install it
+     **per-project** from the project root:
+     `npx skills add <owner/repo> --skill <name>` — it writes into `./.claude/skills/` (already
+     gitignored, same place `skill-activate` uses). **Never** `-g`/global (the global path is
+     unreliable — the reason the kit clones its own packs). Remove one later with
+     `rm -rf .claude/skills/<name>`. (The `find-skills` skill is an alternative discovery route when
+     it's installed.)
 
 4. **Ask the user to confirm or adjust** the list. Do NOT activate without an explicit yes.
 
