@@ -50,7 +50,10 @@ link_one() {  # link_one <skill_dir> — symlink into ~/.claude/skills if not al
 
 for entry in "${SKILL_SOURCES[@]}"; do
   url="${entry%%|*}"; rest="${entry#*|}"; filter="${rest%%|*}"; marker="${rest##*|}"
-  repo="$(basename "$url" .git)"
+  # Clone dir = "<owner>-<repo>", NOT just the repo basename, so sources that share a basename don't
+  # collide in $SRC_DIR and shadow each other — e.g. anthropics/skills vs vercel-labs/skills, and
+  # redis/agent-skills vs vercel-labs/agent-skills. (All sources are github.com URLs.)
+  repo="${url#https://github.com/}"; repo="${repo%.git}"; repo="${repo//\//-}"
 
   if [[ -e "$SKILLS_DIR/$marker" || -L "$SKILLS_DIR/$marker" ]]; then
     ok "$repo: already present (skipping)"
