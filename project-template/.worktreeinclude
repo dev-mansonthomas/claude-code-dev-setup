@@ -1,0 +1,6 @@
+# Files copied into each new git worktree (`claude --worktree <name>` / `ccvm <project> --worktree`).
+# Gitignore-style patterns. A pattern only takes effect if the file is ALSO gitignored — tracked
+# files are never duplicated. Keeps per-worktree secrets/env present so parallel streams can run.
+# See docs/parallel-workstreams.md.
+.env
+.env.*
