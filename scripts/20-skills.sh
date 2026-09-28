@@ -22,9 +22,11 @@ mkdir -p "$SKILLS_DIR"
 present_now=$(find "$SKILLS_DIR" -mindepth 1 -maxdepth 1 \( -type d -o -type l \) 2>/dev/null | wc -l | tr -d ' ')
 info "$present_now skill(s) already in ~/.claude/skills."
 
-# Format: "<git-url>|<filter>|<marker>"
+# Format: "<git-url>|<filter>|<unused>"
 #   <filter>  empty = all skills in the repo; else space-separated allowlist of names
-#   <marker>  a representative skill; if it's already present, the whole repo is skipped
+#   <unused>  3rd field is legacy (kept so entries need no rewrite). Sources are now REFRESHED on
+#             every run (git pull --ff-only), not installed-once — so a skill never freezes at its
+#             first-clone HEAD. `skills-update` triggers the same refresh on demand.
 SKILL_SOURCES=(
   "https://github.com/fcenedes/redis_sa_skills||caveman"
   "https://github.com/redis/agent-skills||redis-core"
@@ -34,7 +36,7 @@ SKILL_SOURCES=(
   "https://github.com/netresearch/file-search-skill|file-search|file-search"
 )
 
-linked=0; skipped=0
+linked=0; updated=0
 
 link_one() {  # link_one <skill_dir> — symlink into ~/.claude/skills if not already there
   local sdir="$1" name target
@@ -49,26 +51,30 @@ link_one() {  # link_one <skill_dir> — symlink into ~/.claude/skills if not al
 }
 
 for entry in "${SKILL_SOURCES[@]}"; do
-  url="${entry%%|*}"; rest="${entry#*|}"; filter="${rest%%|*}"; marker="${rest##*|}"
+  url="${entry%%|*}"; rest="${entry#*|}"; filter="${rest%%|*}"
   # Clone dir = "<owner>-<repo>", NOT just the repo basename, so sources that share a basename don't
   # collide in $SRC_DIR and shadow each other — e.g. anthropics/skills vs vercel-labs/skills, and
   # redis/agent-skills vs vercel-labs/agent-skills. (All sources are github.com URLs.)
   repo="${url#https://github.com/}"; repo="${repo%.git}"; repo="${repo//\//-}"
 
-  if [[ -e "$SKILLS_DIR/$marker" || -L "$SKILLS_DIR/$marker" ]]; then
-    ok "$repo: already present (skipping)"
-    skipped=$((skipped + 1))
-    continue
-  fi
-
+  # Refresh on every run: pull if already cloned, else clone. (No install-once skip — that used to
+  # freeze a skill at its first-clone HEAD forever.) Report old→new so updates are visible.
   dir="$SRC_DIR/$repo"
-  info "$repo: installing${filter:+ (only: $filter)}..."
   mkdir -p "$SRC_DIR"
   if [[ -d "$dir/.git" ]]; then
-    git -C "$dir" pull --quiet --ff-only 2>/dev/null || warn "could not update $repo (using existing clone)"
-  elif ! git clone --quiet --depth 1 "$url" "$dir" 2>/dev/null; then
-    warn "could not clone $url — skipping $repo."
-    continue
+    before="$(git -C "$dir" rev-parse --short HEAD 2>/dev/null || echo '?')"
+    if git -C "$dir" pull --quiet --ff-only 2>/dev/null; then
+      after="$(git -C "$dir" rev-parse --short HEAD 2>/dev/null || echo '?')"
+      if [[ "$before" != "$after" ]]; then info "$repo: updated $before → $after"; updated=$((updated + 1)); else ok "$repo: up to date ($after)"; fi
+    else
+      warn "$repo: could not fast-forward (kept $before)"
+    fi
+  else
+    info "$repo: cloning${filter:+ (only: $filter)}..."
+    if ! git clone --quiet --depth 1 "$url" "$dir" 2>/dev/null; then
+      warn "could not clone $url — skipping $repo."
+      continue
+    fi
   fi
 
   # Each skill is a directory containing SKILL.md. Filtered sources (one named skill,
@@ -103,7 +109,7 @@ for entry in "${CLONE_ONLY_SOURCES[@]}"; do
   ok "available (not linked): $cdir — $n skills; activate per-project with /skills-review"
 done
 
-ok "Skills done: $linked newly linked, $skipped source(s) already present."
+ok "Skills done: $linked newly linked, $updated source(s) updated."
 info "List: ls ~/.claude/skills   |   verify: ./02-doctor.sh"
 [[ -d "$SRC_DIR" ]] && info "Sources cloned in $SRC_DIR (update later: git -C $SRC_DIR/<repo> pull)."
 exit 0

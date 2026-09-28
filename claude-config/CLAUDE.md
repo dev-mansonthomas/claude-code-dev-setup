@@ -248,6 +248,10 @@ task matches one, invoke it yourself without being asked (you may also name one 
   the confirmed skills **per-project** into `.claude/skills/` via **`skill-activate`** (`--list` /
   `<name>…` / `--list-active` / `--deactivate`). Re-run `/skills-review` as the project evolves. Keep it
   minimal — every activated skill adds its description to every session (token cost).
+- **Keeping skills current** → skill sources are git clones under `~/.claude/skill-sources`; they are
+  **refreshed (`git pull`) on every `./03-vm-up.sh`**, and **`skills-update`** does the same on demand
+  (reports each source's old→new HEAD). Third-party sources pull to latest HEAD (unpinned) — a
+  supply-chain action, so review changes if that matters.
 
 ## Tech stack defaults (override per project)
 
