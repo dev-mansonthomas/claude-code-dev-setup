@@ -27,7 +27,7 @@ REPO=""; BASE=""; BRANCH=""
 PUSHED=false; DIRTY=false; PUSHED_SHA=""
 PR_NUMBER=""; PR_URL=""; PR_REUSED=false
 CI=""; CHECKS='[]'; FAILING='[]'; LOGS_CMD=""
-MERGED=false; ALREADY_MERGED=false; MERGED_SHA=""
+MERGED=false; ALREADY_MERGED=false; MERGED_SHA=""; CONFLICT=false; MERGE_STATE=""
 BASE_UPDATED=false; DEL_REMOTE=false; DEL_LOCAL=false; WORKTREE_REMOVED=""
 ERR_CODE=""; ERR_MSG=""
 
@@ -75,6 +75,7 @@ finish() {
     --argjson merged "$MERGED" --argjson alreadyMerged "$ALREADY_MERGED" --arg mergedSha "$MERGED_SHA" \
     --argjson baseUpdated "$BASE_UPDATED" --argjson delRemote "$DEL_REMOTE" --argjson delLocal "$DEL_LOCAL" \
     --arg worktreeRemoved "$WORKTREE_REMOVED" \
+    --argjson conflict "$CONFLICT" --arg mergeState "$MERGE_STATE" \
     --arg errCode "$ERR_CODE" --arg errMsg "$ERR_MSG" \
     '
     def nn: if . == "" then null else . end;
@@ -85,6 +86,7 @@ finish() {
       pushed: $pushed, workingTreeDirty: $dirty,
       pr: { number: ($prNumber | if . == "" then null else tonumber end), url: ($prUrl|nn), reused: $prReused },
       headSha: ($headSha|nn),
+      conflict: $conflict, mergeStateStatus: ($mergeState|nn),
       ci: ($ci|nn), checks: $checks, failingChecks: $failing, logsCmd: ($logsCmd|nn),
       merged: $merged, alreadyMerged: $alreadyMerged, mergedSha: ($mergedSha|nn),
       baseUpdated: $baseUpdated, branchDeleted: { remote: $delRemote, local: $delLocal },
@@ -235,9 +237,30 @@ poll_ci() {
   done
 }
 
+# On a blocked merge, ask GitHub WHY so the report is precise (conflict vs branch-protection vs other).
+# mergeability is computed async, so retry a few times while it's UNKNOWN.
+classify_merge_block() {
+  local j i=0
+  while [ "$i" -lt 3 ]; do
+    j="$(gh_ pr view "$PR_NUMBER" --json mergeable,mergeStateStatus 2>/dev/null || echo "")"
+    MERGE_STATE="$(printf '%s' "$j" | jq -r '.mergeStateStatus // ""' 2>/dev/null)"
+    case "$(printf '%s' "$j" | jq -r '.mergeable // ""' 2>/dev/null)" in
+      CONFLICTING) CONFLICT=true;  return 0 ;;
+      MERGEABLE)   CONFLICT=false; return 0 ;;
+    esac
+    i=$((i+1)); sleep_ 2
+  done
+  CONFLICT=false
+}
+
 do_merge() {
-  gh_ pr merge "$PR_NUMBER" --squash --delete-branch >/dev/null 2>&1 || \
-    fail 6 merge "merge failed/blocked (branch protection or conflict — not force-merged)"
+  if ! gh_ pr merge "$PR_NUMBER" --squash --delete-branch >/dev/null 2>&1; then
+    classify_merge_block
+    if [ "$CONFLICT" = true ]; then
+      fail 6 conflict "PR #$PR_NUMBER conflicts with $BASE (mergeStateStatus=${MERGE_STATE:-CONFLICTING}) — rebase the branch on $BASE, resolve, then re-run. Never force-merged."
+    fi
+    fail 6 merge "merge blocked (mergeStateStatus=${MERGE_STATE:-unknown}; e.g. branch protection) — not force-merged."
+  fi
   MERGED=true; DEL_REMOTE=true
   MERGED_SHA="$(gh_ pr view "$PR_NUMBER" --json mergeCommit -q '.mergeCommit.oid' 2>/dev/null | cut -c1-7)"
   sync_prune

@@ -100,24 +100,22 @@ Each worktree is its own branch, so ship them **independently** — never from t
 
 Streams merge in any order; `git-pr-merge` fast-forwards `main` each time.
 
-### Conflicts between streams
+### Conflicts between streams — the agent handles it
 
 The real parallel risk: two streams edit the same files, so the second to merge conflicts with the
-now-updated `main`. `git-pr-merge` **never force-merges** — `gh pr merge` fails and it exits **6**.
-Recover in the lagging stream's worktree:
+now-updated `main`. `git-pr-merge` **never force-merges** — it exits **6** and writes
+`conflict: true` (plus `mergeStateStatus`) into `debug/git/git-pr-merge.json`.
 
-```bash
-git fetch origin main && git rebase origin/main   # resolve, git add, git rebase --continue
-```
+**You don't have to remember the recovery — the agent drives it.** It reads that report after every
+ship, and on `conflict: true` runs **`/sync-stream`** in the stream's worktree: tags a backup ref,
+rebases onto the base, resolves each conflict *with you* (rendered by `delta`), runs the tests, then
+hands back to ship. Safe by construction — worktree-only, `git rebase --abort` is the escape, and it
+never force-pushes or `reset --hard`s. Run `/sync-stream` proactively too, to pull a long-lived stream
+up to date *before* a conflict bites.
 
-then re-run `git-pr-merge`. Spot collisions *early*, before they bite, with:
-
-```bash
-git diff --name-only origin/main...feat/<stream>   # per stream — overlapping files = risk
-```
-
-and `git-check` (kit tool) → `debug/git/git-check.json` for GitHub-vs-local state. `delta` (installed
-in the VM) gives readable diffs and side-by-side conflict review during the rebase.
+Under the hood it's just: `git rebase main` in the worktree (local `main` is current — no fetch or
+creds needed), resolve, then `git-pr-merge --branch <stream>` again. Spot overlap early with
+`git diff --name-only main...feat/<stream>`, and `git-check` for GitHub-vs-local state.
 
 ### Cleanup
 
