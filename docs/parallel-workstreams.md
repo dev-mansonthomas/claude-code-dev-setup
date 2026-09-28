@@ -16,8 +16,9 @@ Claude Code has native worktrees (v2.1.198+). `ccvm` forwards the flag:
 ccvm <project> --worktree <stream>
 ```
 
-- Creates/enters a worktree at `<project>/.claude/worktrees/<stream>` — under `~/Projects`, so it's on
-  the mount and reachable in the VM.
+- Creates/enters a worktree at `<project>/.claude/worktrees/<stream>` on a branch named
+  **`worktree-<stream>`** (Claude's naming) — under `~/Projects`, so it's on the mount and reachable
+  in the VM.
 - Branches from `origin/HEAD` by default (a clean base). To branch from your current local HEAD
   instead, set `"worktree": { "baseRef": "head" }` in the project's `.claude/settings.json`.
 - Cleanup: a named worktree with no changes is swept after `cleanupPeriodDays`; force it with
@@ -93,10 +94,10 @@ stream inside `ccvm`. Requires VM `claude` ≥ v2.1.224 (the VM is well past tha
 
 ## Shipping each stream (host-only, as always)
 
-Each worktree is its own branch, so ship them **independently** — never from the VM:
+Each worktree is its own branch (`worktree-<stream>`), so ship them **independently** — never from the VM:
 
 1. In the stream's session, write the PR body to `debug/git/pr-body.md`.
-2. On the **host**: `git-pr-merge --branch <stream-branch> "<title>"`.
+2. On the **host**: `git-pr-merge --branch worktree-<stream> "<title>"`.
 
 Streams merge in any order; `git-pr-merge` fast-forwards `main` each time.
 
@@ -114,15 +115,15 @@ never force-pushes or `reset --hard`s. Run `/sync-stream` proactively too, to pu
 up to date *before* a conflict bites.
 
 Under the hood it's just: `git rebase main` in the worktree (local `main` is current — no fetch or
-creds needed), resolve, then `git-pr-merge --branch <stream>` again. Spot overlap early with
-`git diff --name-only main...feat/<stream>`, and `git-check` for GitHub-vs-local state.
+creds needed), resolve, then `git-pr-merge --branch worktree-<stream>` again. Spot overlap early with
+`git diff --name-only main...worktree-<stream>`, and `git-check` for GitHub-vs-local state.
 
 ### Cleanup
 
 `git-pr-merge` now **removes a merged stream's worktree automatically** when it's clean (it reports the
 path as `worktreeRemoved`; a dirty worktree is left untouched with a warning). If you ever need to do
 it by hand: `git worktree remove .claude/worktrees/<stream>`. The local branch ref may linger (the tool
-won't force-delete possibly-unpushed commits) — drop it with `git branch -D feat/<stream>` when done.
+won't force-delete possibly-unpushed commits) — drop it with `git branch -D worktree-<stream>` when done.
 
 ## VM resource notes
 

@@ -18,11 +18,12 @@ Rules (why this can't trash the repo):
 
 Do this:
 
-1. **Confirm context.** `git rev-parse --abbrev-ref HEAD` must be the *stream* branch, not the base
-   (if it's the base, stop — you're not in a stream worktree). Ensure `git status` is clean; commit or
-   stash WIP first.
-2. **Tag a recovery point.** `git tag -f "backup/$(git rev-parse --abbrev-ref HEAD)-prerebase"` and tell
-   the user it exists ("abort or this tag restores everything").
+1. **Confirm context + capture the branch.** `BR="$(git rev-parse --abbrev-ref HEAD)"` — this is the
+   *stream* branch. `ccvm <project> --worktree <stream>` (i.e. `claude --worktree <stream>`) names it
+   **`worktree-<stream>`**, so don't assume the bare stream name. If `$BR` equals the base, stop —
+   you're not in a stream worktree. Ensure `git status` is clean; commit or stash WIP first.
+2. **Tag a recovery point.** `git tag -f "backup/$BR-prerebase"` and tell the user it exists ("abort
+   or this tag restores everything").
 3. **Preview the overlap** (no network — base is already local): `git log --oneline <base>..HEAD` (your
    commits) and `git diff --name-only HEAD...<base>` (files that also changed on the base = the likely
    conflict set). Show it before touching anything.
@@ -32,5 +33,6 @@ Do this:
 5. **Verify.** Run the stream's tests / lint / build (per the project `CLAUDE.md`) and **paste the real
    output**. Red = not done.
 6. **Hand off to ship (host-only).** Summarize what conflicted and how you resolved it, then: write the
-   PR body to `debug/git/pr-body.md` and tell the user to run `git-pr-merge --branch <stream> "<title>"`
-   on the host. After it merges, drop the tag: `git tag -d "backup/<stream>-prerebase"`.
+   PR body to `debug/git/pr-body.md` and tell the user to run `git-pr-merge --branch "$BR" "<title>"`
+   on the host (use the actual branch from step 1, e.g. `worktree-<stream>`). After it merges, drop the
+   tag: `git tag -d "backup/$BR-prerebase"`.
