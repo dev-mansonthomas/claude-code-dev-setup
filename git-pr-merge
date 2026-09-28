@@ -28,7 +28,7 @@ PUSHED=false; DIRTY=false; PUSHED_SHA=""
 PR_NUMBER=""; PR_URL=""; PR_REUSED=false
 CI=""; CHECKS='[]'; FAILING='[]'; LOGS_CMD=""
 MERGED=false; ALREADY_MERGED=false; MERGED_SHA=""
-BASE_UPDATED=false; DEL_REMOTE=false; DEL_LOCAL=false
+BASE_UPDATED=false; DEL_REMOTE=false; DEL_LOCAL=false; WORKTREE_REMOVED=""
 ERR_CODE=""; ERR_MSG=""
 
 # --- args ------------------------------------------------------------------
@@ -74,6 +74,7 @@ finish() {
     --arg ci "$CI" --argjson checks "$CHECKS" --argjson failing "$FAILING" --arg logsCmd "$LOGS_CMD" \
     --argjson merged "$MERGED" --argjson alreadyMerged "$ALREADY_MERGED" --arg mergedSha "$MERGED_SHA" \
     --argjson baseUpdated "$BASE_UPDATED" --argjson delRemote "$DEL_REMOTE" --argjson delLocal "$DEL_LOCAL" \
+    --arg worktreeRemoved "$WORKTREE_REMOVED" \
     --arg errCode "$ERR_CODE" --arg errMsg "$ERR_MSG" \
     '
     def nn: if . == "" then null else . end;
@@ -86,7 +87,8 @@ finish() {
       headSha: ($headSha|nn),
       ci: ($ci|nn), checks: $checks, failingChecks: $failing, logsCmd: ($logsCmd|nn),
       merged: $merged, alreadyMerged: $alreadyMerged, mergedSha: ($mergedSha|nn),
-      baseUpdated: $baseUpdated, branchDeleted: { remote: $delRemote, local: $delLocal }
+      baseUpdated: $baseUpdated, branchDeleted: { remote: $delRemote, local: $delLocal },
+      worktreeRemoved: ($worktreeRemoved|nn)
     }
     | if $ok then . else . + { error: { code: ($errCode|nn), message: ($errMsg|nn) } } end
     ')"
@@ -243,10 +245,25 @@ do_merge() {
 }
 
 sync_prune() {
+  local wt=""
   if git_ checkout "$BASE" >/dev/null 2>&1 && git_ pull --ff-only origin "$BASE" >/dev/null 2>&1; then
     BASE_UPDATED=true
   fi
   git_ fetch -p >/dev/null 2>&1 || true
+  # Worktree mode (parallel streams): if this branch was checked out in a git worktree, remove it now
+  # that it's merged. `git worktree remove` WITHOUT --force refuses a dirty worktree, so uncommitted
+  # work is never destroyed — we just warn and leave it. (Runs before the branch-delete below because
+  # a branch checked out in a worktree can't be deleted while the worktree exists.)
+  if [ -n "$BRANCH" ]; then
+    wt="$(git_ worktree list --porcelain 2>/dev/null | awk -v b="refs/heads/$BRANCH" '/^worktree /{p=$2} /^branch /{if ($2==b) print p}')"
+    if [ -n "$wt" ]; then
+      if git_ worktree remove "$wt" >/dev/null 2>&1; then
+        WORKTREE_REMOVED="$wt"
+      else
+        printf '⚠ kept worktree %s — it has uncommitted changes; not removing (force with: git worktree remove --force %s).\n' "$wt" "$wt" >&2
+      fi
+    fi
+  fi
   # `gh pr merge --delete-branch` already removes the local branch (and checks out base) in the
   # normal path. If the branch still exists locally — e.g. a RE-RUN after the PR already merged —
   # only drop it when it has NO commits living solely on this local branch; otherwise a `-D` would

@@ -36,6 +36,11 @@ Two separate apps (e.g. `admin` vs `reservation`) → same idea, one `ccvm <repo
 > `ccvm` only forwards a conservative charset (`A-Za-z0-9 . _ / = -`) to `claude`, so keep stream
 > names simple (`gps-live`, not `gps live`). Anything else is refused rather than run.
 
+Open each stream in its own terminal — on macOS, **iTerm2 tabs or split panes work perfectly and you
+do NOT need tmux**: a pane/tab is just host-side window layout, and each one runs an independent
+`ccvm` → an independent VM session. (tmux/iTerm2 panes only matter for Claude's *agent-teams*
+split-pane mode, which can't drive the host's iTerm2 from inside the VM anyway — irrelevant here.)
+
 ### Propagate `.env` into each worktree
 
 Worktrees don't copy gitignored files. Put a **`.worktreeinclude`** at the project root (gitignore-style
@@ -67,6 +72,19 @@ All streams run in the same VM, so messaging is local and private:
 Use messaging for **notices** ("a breaking change landed"); use the shared schema doc for the durable
 **contract**. They're complementary, not alternatives.
 
+### Validate messaging actually works (do this once)
+
+All sessions run in the same VM as the same user, so they should see each other — confirm it:
+
+1. Two terminals: `ccvm <project> --worktree stream-a` and `ccvm <project> --worktree stream-b`.
+2. In **A**: `/list-agents` → you should see **stream-b** (and A). Peer listed ⇒ discovery works.
+3. In **A**: `@stream-b ping` (or "send stream-b a message: ping"). In **B** it surfaces in the inbox.
+   Reverse to confirm both directions.
+
+**Only works VM-session ↔ VM-session.** A `claude` running on the **host** is a different machine
+from the VM (container↔host boundary, no bridge), so it will not appear in `/list-agents` — keep every
+stream inside `ccvm`. Requires VM `claude` ≥ v2.1.224 (the VM is well past that).
+
 ## Overseeing many streams
 
 - `claude agents` — a dashboard of running/background sessions (peek, attach, stop). Background
@@ -80,14 +98,48 @@ Each worktree is its own branch, so ship them **independently** — never from t
 1. In the stream's session, write the PR body to `debug/git/pr-body.md`.
 2. On the **host**: `git-pr-merge --branch <stream-branch> "<title>"`.
 
-Streams merge in any order; `git-pr-merge` fast-forwards `main` each time. Rebase a long-lived stream
-on the updated `main` when it falls behind.
+Streams merge in any order; `git-pr-merge` fast-forwards `main` each time.
+
+### Conflicts between streams
+
+The real parallel risk: two streams edit the same files, so the second to merge conflicts with the
+now-updated `main`. `git-pr-merge` **never force-merges** — `gh pr merge` fails and it exits **6**.
+Recover in the lagging stream's worktree:
+
+```bash
+git fetch origin main && git rebase origin/main   # resolve, git add, git rebase --continue
+```
+
+then re-run `git-pr-merge`. Spot collisions *early*, before they bite, with:
+
+```bash
+git diff --name-only origin/main...feat/<stream>   # per stream — overlapping files = risk
+```
+
+and `git-check` (kit tool) → `debug/git/git-check.json` for GitHub-vs-local state. `delta` (installed
+in the VM) gives readable diffs and side-by-side conflict review during the rebase.
+
+### Cleanup
+
+`git-pr-merge` now **removes a merged stream's worktree automatically** when it's clean (it reports the
+path as `worktreeRemoved`; a dirty worktree is left untouched with a warning). If you ever need to do
+it by hand: `git worktree remove .claude/worktrees/<stream>`. The local branch ref may linger (the tool
+won't force-delete possibly-unpushed commits) — drop it with `git branch -D feat/<stream>` when done.
 
 ## VM resource notes
 
 All streams share the one VM: CPU/RAM, the ~19 GB root FS, and the 60 GB Docker disk. Parallel
 installs/builds fill caches fast — run **`vm-clean`** if the root FS gets tight, and avoid many heavy
 Docker builds at once (they compete for the Docker disk).
+
+## Skills that help (already available)
+
+No new install needed — `git worktree` is built in and `claude agents` ships with the VM's `claude`.
+For methodology, the **`superpowers`** plugin (enabled globally) already provides:
+
+- `superpowers:using-git-worktrees` — start isolated feature work in a worktree.
+- `superpowers:dispatching-parallel-agents` — 2+ independent tasks in parallel.
+- `superpowers:subagent-driven-development` — execute a plan's independent tasks in one session.
 
 ## When worktrees aren't enough
 
