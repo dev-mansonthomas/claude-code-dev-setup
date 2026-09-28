@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # ccvm — work inside the always-on Colima VM (the default isolated environment).
-#   ccvm <project>   open VS Code on the host project + a Claude session INSIDE the VM
-#   ccvm             shell into the VM (at ~/Projects)
+#   ccvm <project>                 open VS Code on the host project + a Claude session INSIDE the VM
+#   ccvm <project> [claude-args…]  same, forwarding extra flags to `claude` (conservative charset only)
+#                                  — e.g. `ccvm <project> --worktree <stream>` for a parallel
+#                                  workstream in an isolated git worktree (docs/parallel-workstreams.md)
+#   ccvm                           shell into the VM (at ~/Projects)
 # You edit on the host (files are mounted into the VM); Claude + Docker + tests run in the VM.
 set -euo pipefail
 PROJECTS="$HOME/Projects"
@@ -33,7 +36,7 @@ if [[ $# -eq 0 ]]; then
 fi
 
 # Resolve <project> to an absolute host path under ~/Projects (mounted at the same path in the VM).
-name="$1"
+name="$1"; shift   # remaining args (if any) are forwarded to `claude` below
 if [[ -d "$name" ]]; then abs="$(cd "$name" && pwd)"; else abs="$PROJECTS/$name"; fi
 [[ -d "$abs" ]] || { echo "Project not found: $abs" >&2; exit 1; }
 case "$abs" in
@@ -59,5 +62,13 @@ echo "→ entering VM at $abs  (Claude Code runs inside the VM; edit on the host
 flags=" --permission-mode auto"
 if [[ -n "${CCVM_YOLO:-}" ]]; then flags=" --dangerously-skip-permissions"
 elif [[ -n "${CCVM_SAFE:-}" ]]; then flags=" --permission-mode acceptEdits"; fi
+# Forward any extra args to `claude` (e.g. `--worktree <stream>` for a parallel workstream). Restrict
+# to a conservative charset so a forwarded value can't break out of the remote `bash -lc` command.
+for a in "$@"; do
+  case "$a" in
+    *[!A-Za-z0-9._/=-]*) echo "⚠ refusing to forward unsafe arg to claude (allowed chars: A-Za-z0-9 . _ / = -): $a" >&2; exit 2 ;;
+  esac
+  flags="$flags $a"
+done
 inject_token
 exec colima ssh -- bash -lc "$(tok_prelude)cd '$abs' && exec claude$flags"

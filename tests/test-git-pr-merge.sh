@@ -32,6 +32,12 @@ git_() {
     checkout|pull|fetch) return 0 ;;
     branch)    return 0 ;;
     show-ref)  return 1 ;;   # branch absent after merge (gh --delete-branch removed it)
+    worktree)
+      case "${2:-}" in
+        list)   printf '%s' "${STUB_WORKTREE_LIST:-}" ;;
+        remove) [ "${STUB_WORKTREE_REMOVE_OK:-1}" = 1 ] ;;
+        *)      return 0 ;;
+      esac ;;
     *) return 0 ;;
   esac
 }
@@ -45,6 +51,9 @@ gh_() {
       elif printf '%s' "$*" | grep -q defaultBranchRef; then echo "${STUB_DEFAULT_BRANCH:-main}"; fi ;;
     "pr view")
       if printf '%s' "$*" | grep -q mergeCommit; then echo "${STUB_MERGE_SHA:-abc1234def}";
+      elif printf '%s' "$*" | grep -q mergeable; then
+        printf '{"mergeable":"%s","mergeStateStatus":"%s"}\n' "${STUB_MERGEABLE:-UNKNOWN}" "${STUB_MERGE_STATE:-BLOCKED}";
+      elif printf '%s' "$*" | grep -q -- '-q .state'; then echo "${STUB_POSTMERGE_STATE:-OPEN}";
       elif printf '%s' "$*" | grep -q -- '-q'; then echo "${STUB_PR_NUMBER:-14}";
       else
         if [ -z "${STUB_PR_VIEW_STATE:-}" ]; then return 1; fi
@@ -61,7 +70,8 @@ gh_() {
 reset_stubs() {
   unset STUB_MISSING STUB_IN_REPO STUB_AUTHED STUB_CUR_BRANCH STUB_AHEAD STUB_DIRTY \
         STUB_PR_VIEW_STATE STUB_PR_NUMBER STUB_PR_URL STUB_PUSH_OK STUB_CREATE_OK \
-        STUB_CHECKS STUB_MERGE_OK STUB_MERGE_SHA STUB_REPO STUB_DEFAULT_BRANCH
+        STUB_CHECKS STUB_MERGE_OK STUB_MERGE_SHA STUB_REPO STUB_DEFAULT_BRANCH \
+        STUB_MERGEABLE STUB_MERGE_STATE STUB_POSTMERGE_STATE STUB_WORKTREE_LIST STUB_WORKTREE_REMOVE_OK
 }
 run() { : > "$CALLS"; OUT="$(main "$@")"; CODE=$?; }
 
@@ -137,5 +147,29 @@ assert_eq   "gitignore written"   "$( [ -f "$TESTTMP/debug/git/.gitignore" ] && 
 
 reset_stubs; STUB_CHECKS='[{"bucket":"pass","name":"x","state":"SUCCESS","link":"x"}]'; run --no-stdout "t"
 assert_eq   "--no-stdout -> empty stdout" "$OUT" ""
+
+# gh merge fails but the PR is actually MERGED (e.g. --delete-branch couldn't drop a worktree branch)
+# -> treat as success and clean up, don't report a false block.
+reset_stubs; STUB_MERGE_OK=0; STUB_POSTMERGE_STATE=MERGED; STUB_CHECKS='[{"bucket":"pass","name":"x","state":"SUCCESS","link":"x"}]'; run "t"
+assert_eq   "merge-fails-but-merged -> exit 0" "$CODE" "0"
+assert_jq   "merge-fails-but-merged -> merged" "$OUT" '.merged' "true"
+
+# gh merge fails, PR not merged, GitHub says CONFLICTING -> precise conflict signal.
+reset_stubs; STUB_MERGE_OK=0; STUB_POSTMERGE_STATE=OPEN; STUB_MERGEABLE=CONFLICTING; STUB_MERGE_STATE=DIRTY; STUB_CHECKS='[{"bucket":"pass","name":"x","state":"SUCCESS","link":"x"}]'; run "t"
+assert_jq   "conflict -> conflict true" "$OUT" '.conflict' "true"
+assert_jq   "conflict -> error.code conflict" "$OUT" '.error.code' "conflict"
+assert_jq   "conflict -> mergeStateStatus" "$OUT" '.mergeStateStatus' "DIRTY"
+assert_eq   "conflict -> exit 6" "$CODE" "6"
+
+# Merged branch had a worktree -> it is removed and reported.
+reset_stubs; STUB_CHECKS='[{"bucket":"pass","name":"x","state":"SUCCESS","link":"x"}]'
+STUB_WORKTREE_LIST=$'worktree /tmp/wt/feat-x\nHEAD abc\nbranch refs/heads/feat/x\n'; run "t"
+assert_jq   "worktree removed -> path reported" "$OUT" '.worktreeRemoved' "/tmp/wt/feat-x"
+assert_call "worktree removed -> remove called" "worktree remove" "$CALLS"
+
+# Worktree path containing a space must not be truncated (B#2 regression).
+reset_stubs; STUB_CHECKS='[{"bucket":"pass","name":"x","state":"SUCCESS","link":"x"}]'
+STUB_WORKTREE_LIST=$'worktree /tmp/my wt/feat-x\nHEAD abc\nbranch refs/heads/feat/x\n'; run "t"
+assert_jq   "worktree path w/ space -> full path" "$OUT" '.worktreeRemoved' "/tmp/my wt/feat-x"
 
 suite_summary "git-pr-merge"

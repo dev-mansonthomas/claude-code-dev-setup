@@ -130,6 +130,30 @@ if ! has fd && has apt-get; then
   fi
 fi
 
+# --- delta (git-delta: syntax-highlighted diffs + side-by-side conflict review; nice for worktree
+# streams that rebase on main). Prebuilt GitHub binary (apt lags). Wire it into git as the pager
+# ONLY when no pager is set, so a deliberate user choice isn't clobbered.
+if ! has delta; then
+  dver="0.19.2"; case "$(uname -m)" in aarch64|arm64) darch="aarch64";; *) darch="x86_64";; esac
+  say "installing delta ${dver} (${darch}-linux)…"
+  dlt="$(mktemp -d)"; dsub="delta-${dver}-${darch}-unknown-linux-gnu"
+  if curl -fsSL "https://github.com/dandavison/delta/releases/download/${dver}/${dsub}.tar.gz" -o "$dlt/d.tgz" 2>/dev/null \
+     && tar -xzf "$dlt/d.tgz" -C "$dlt" "${dsub}/delta" 2>/dev/null \
+     && sudo install "$dlt/${dsub}/delta" /usr/local/bin/delta 2>/dev/null; then
+    ok "delta ${dver}"
+    if has git && [ -z "$(git config --global core.pager 2>/dev/null)" ]; then
+      git config --global core.pager delta
+      git config --global interactive.diffFilter 'delta --color-only'
+      git config --global delta.navigate true
+      git config --global merge.conflictstyle zdiff3
+      ok "git configured to use delta (pager + zdiff3 conflicts)"
+    fi
+  else
+    warn "delta install failed (optional; plain git diffs still work)."
+  fi
+  rm -rf "$dlt"
+fi
+
 # --- ast-grep (structural code search/rewrite on the AST; pairs with rg/fd for the file-search skill)
 # Prebuilt binary from GitHub releases (a .zip — unzip via python3 to avoid an extra dep). Install ONLY
 # the `ast-grep` binary: the archive also ships an `sg` alias that would collide with util-linux `sg`.

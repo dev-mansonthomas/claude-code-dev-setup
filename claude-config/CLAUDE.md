@@ -119,6 +119,19 @@ from the host.** When driving a project toward deployment:
   read-only view of GitHub vs local state, the user runs **`git-check`** → `debug/git/git-check.json`.
   Fallback only if those aren't installed: print the raw `git push` / `gh pr create` / `gh pr merge`.
   The repo is on a shared mount, so the host already sees your commits — it just runs them.
+- **Parallel work streams?** Run one Claude session per stream, each in its own git worktree:
+  `ccvm <project> --worktree <stream>` — a terminal each, all sessions in the one VM, discovering and
+  messaging each other over a local socket (`/list-agents`). Each worktree is its own branch → ship
+  independently with `git-pr-merge --branch`. Keep a shared contract doc (e.g. `docs/REDIS_SCHEMA.md`)
+  referenced by the project `CLAUDE.md` so a shared data model doesn't drift. Full guide:
+  `docs/parallel-workstreams.md`.
+- **A stream's ship came back blocked?** `git-pr-merge` writes `debug/git/git-pr-merge.json` after
+  every run — **Read it** and act on the precise fields: `conflict: true` (+ `mergeStateStatus`) means
+  the branch conflicts with its base; `ci: failed` means fix the check. On a **conflict, don't hand the
+  user rebase steps to memorise — propose the fix and drive it**: in that stream's worktree session run
+  **`/sync-stream`** (tags a backup, rebases onto the base, resolves conflicts with you, runs the tests,
+  hands back to ship). Safe by construction: worktree-only, `git rebase --abort` is the escape, and it
+  never force-pushes or `reset --hard`s (the classifier blocks those anyway).
 - **Deploy — generate a host script; never deploy from the VM.** Produce `deploy/gcp-deploy.sh`
   (idempotent, host-run) plus `deploy/Dockerfile` and `deploy/deploy.env.example`, then **tell the
   user to run `./deploy/gcp-deploy.sh` on the host**. That script does the credentialed work:
