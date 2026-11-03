@@ -84,8 +84,15 @@ collector in the VM automatically.
   README's *Network firewall* section. Until then, treat VM egress as open.
 - **Resources:** the VM holds 8–12 GB while running. Stop it with `colima stop` if needed.
 - **Two environments:** the VM has its own `~/.claude`. The kit's config is symlinked from the
-  **mounted** repo, so editing the kit on the host updates the VM too; re-run
-  `bash <kit>/scripts/20-skills.sh` in the VM to refresh skills.
+  **mounted** repo, so editing the kit on the host updates the VM too.
+- **Skill updates are gated.** Skill sources are third-party and unpinned, and a skill is instructions
+  Claude follows. `./03-vm-up.sh` therefore only *detects* upstream updates and reports them; nothing is
+  applied until you run **`skills-update`** in the VM, which shows what changed per source (files, skills
+  added/removed) and asks before applying. `AUTO_YES=1` does **not** approve updates; the explicit
+  opt-out is `SKILLS_AUTO_APPLY=1 ./03-vm-up.sh` (applies unreviewed).
+- **Options are environment variables.** `./03-vm-up.sh --help` lists every one with its consequences,
+  and the same list is recapped at the end of each run. Only documented variables are forwarded into
+  the VM — never the rest of your environment, never secrets.
 
 ## Trim the host to VM-only (optional)
 Once everything runs in the VM, the **host** copies of the monitoring stack are redundant — and

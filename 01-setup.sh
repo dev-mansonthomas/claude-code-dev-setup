@@ -69,6 +69,9 @@ if [[ -w /opt/homebrew/bin ]]; then
   for u in git-pr-merge git-check; do
     ln -sfn "$HERE/$u" "/opt/homebrew/bin/$u" && ok "linked '$u' -> $HERE/$u"
   done
+  # Skill updates are only reported by this script; `skills-update` is how you review + apply them.
+  ln -sfn "$HERE/scripts/skills-update.sh" /opt/homebrew/bin/skills-update \
+    && ok "linked 'skills-update' -> $HERE/scripts/skills-update.sh"
 fi
 
 step "Done"

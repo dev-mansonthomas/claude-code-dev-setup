@@ -558,13 +558,17 @@ else
   warn "kit dir not found ($KIT) — skipped skills/config (is ~/Projects mounted?)."
 fi
 
-# --- kit host-utility commands on PATH: vm-clean + skill-activate --------------------------
-# vm-clean reclaims space on the small root FS; skill-activate powers per-project /skills-review.
+# --- kit host-utility commands on PATH: vm-clean + skill-activate + skills-update --------------
+# vm-clean reclaims space on the small root FS; skill-activate powers per-project /skills-review;
+# skills-update refreshes all global skills to their latest upstream on demand.
 if [[ -n "$KIT" && -f "$KIT/scripts/vm-clean.sh" ]]; then
   sudo ln -sfn "$KIT/scripts/vm-clean.sh" /usr/local/bin/vm-clean && ok "linked 'vm-clean'"
 fi
 if [[ -n "$KIT" && -f "$KIT/scripts/skill-activate.sh" ]]; then
   sudo ln -sfn "$KIT/scripts/skill-activate.sh" /usr/local/bin/skill-activate && ok "linked 'skill-activate'"
+fi
+if [[ -n "$KIT" && -f "$KIT/scripts/skills-update.sh" ]]; then
+  sudo ln -sfn "$KIT/scripts/skills-update.sh" /usr/local/bin/skills-update && ok "linked 'skills-update'"
 fi
 
 # --- pre-mark onboarding so the FIRST interactive `claude` skips the login/theme wizard ----
