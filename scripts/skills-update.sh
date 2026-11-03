@@ -1,15 +1,24 @@
 #!/usr/bin/env bash
-# skills-update — refresh all globally-installed Agent Skills to their latest upstream.
+# skills-update — review and apply upstream updates to the globally-installed Agent Skills.
 #
-# Runs the same source-refresh that `./03-vm-up.sh` now does: `git pull --ff-only` every repo in
-# ~/.claude/skill-sources, re-link any new skills into ~/.claude/skills, and report old→new HEAD per
-# source. Use it on demand between provisions.
+# For every skill source in ~/.claude/skill-sources: fetch the latest upstream, show what changed
+# (files, skills added/removed/changed), and ask before applying. Nothing changes until you answer y.
+# Skills are third-party and unpinned, and a skill is instructions Claude follows (it can bundle
+# scripts), so updates are never applied behind your back.
 #
-# NOTE: third-party sources are pulled to their latest HEAD (not pinned) — a supply-chain action.
-# Review changes if that matters to you (each source lives at ~/.claude/skill-sources/<owner>-<repo>).
+# Usage: skills-update [--check | --yes] [-h | --help]
+#   (no option)  review each source with updates and ask [y/N]; needs a terminal.
+#   --check      only report which sources have updates waiting; change nothing.
+#   --yes, -y    apply every update without asking (same effect as SKILLS_AUTO_APPLY=1).
+#
+# Exit status: 0 when every source was fetched/handled; 1 if any source failed (offline, deleted or
+# private repo, unreadable clone) — so a script or a glance at $? can tell "nothing updated" from
+# "already up to date".
+#
+# Environment variables: see `20-skills.sh --help` (SKILLS_AUTO_APPLY, SKILLS_SRC_DIR, NO_COLOR).
 set -euo pipefail
 
-# Resolve this script's real directory even when invoked via a /usr/local/bin symlink (portable:
+# Resolve this script's real directory even when invoked via a PATH symlink (portable:
 # BSD/macOS `readlink` has no -f, so follow the link chain by hand).
 src="${BASH_SOURCE[0]}"
 while [ -L "$src" ]; do
@@ -19,4 +28,11 @@ while [ -L "$src" ]; do
 done
 HERE="$(cd -P "$(dirname "$src")" && pwd)"
 
-exec bash "$HERE/20-skills.sh" "$@"
+# Own help (the header above), not 20-skills.sh's.
+case "${1:-}" in
+  -h|--help) sed -n '2,/^set -/{/^set -/!p;}' "$src" | sed 's/^# \{0,1\}//'; exit 0 ;;
+esac
+
+# --review --strict are the defaults for this command; a later --check/--yes from the user overrides
+# --review because 20-skills.sh applies options in order.
+exec bash "$HERE/20-skills.sh" --review --strict "$@"

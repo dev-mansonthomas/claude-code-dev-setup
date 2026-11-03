@@ -212,6 +212,9 @@ rest of macOS.
 ./03-vm-up.sh                 # once: start + provision the VM  (make vm-up)
 ccvm my-app                  # open VS Code on the host + a Claude session inside the VM
 ```
+`./03-vm-up.sh --help` lists every option — they are **environment variables** (e.g.
+`SKILLS_AUTO_APPLY=1 ./03-vm-up.sh`) — with what each one changes; the same list is recapped at the
+end of every run.
 `05-new-project.sh` auto-launches `ccvm` after scaffolding; monitoring (Grafana) runs in the same
 VM (no second VM). Inside the VM, Claude runs in `--permission-mode auto` (a safety classifier gates
 destructive ops) with a broad allow-list — it auto-runs the dev toolchain, so you work hands-off (see [docs/isolation.md](docs/isolation.md)).
@@ -447,9 +450,15 @@ Maven: point the local repo at a writable path — `mvn -Dmaven.repo.local=.m2 �
 
 ```bash
 git -C path/to/claude-code-dev-setup pull   # get the latest kit (config symlinks update automatically)
-./01-setup.sh                                  # idempotent re-run: refreshes skills, MCP, global config
+./01-setup.sh                                  # idempotent re-run: MCP, global config; REPORTS skill updates
+skills-update                                  # review what changed in each skill source and apply it
 # Claude Code self-updates in the background
 ```
+
+Skill sources are third-party and unpinned, so their updates are **never applied unattended**:
+`01-setup.sh` and the VM provisioning only report what is waiting, and `skills-update` shows the diff
+per source and asks before applying (`--check` lists only; `--yes` / `SKILLS_AUTO_APPLY=1` applies
+unreviewed). `AUTO_YES=1` does not approve them.
 
 **Existing projects** don't auto-update (the scaffold is a one-time copy). Global config
 (`~/.claude`) is covered by the pull above. To pull updated kit *infra* files (secret-scan
@@ -468,7 +477,7 @@ backup the installer made:
 ```bash
 rm ~/.claude/CLAUDE.md ~/.claude/settings.json ~/.claude/hooks/git-secret-guard.sh
 rm ~/.claude/commands/{brainstorm,spec,plan-feature,ship,doc-sync}.md
-rm -f /opt/homebrew/bin/{ccvm,git-pr-merge,git-check}   # host CLIs linked by 03-vm-up / 01-setup
+rm -f /opt/homebrew/bin/{ccvm,git-pr-merge,git-check,skills-update}   # host CLIs linked by 03-vm-up / 01-setup
 ls ~/.claude/backups/      # restore anything you want from here
 ```
 

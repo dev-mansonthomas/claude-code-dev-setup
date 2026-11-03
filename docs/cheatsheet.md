@@ -73,9 +73,14 @@ claude -p "…"     # headless (scripts/CI)
 ## Skills upkeep
 ```bash
 ls ~/.claude/skills          # installed skills
-./01-setup.sh                   # idempotent: refresh skills + config
+skills-update                   # review + apply upstream skill updates (asks per source; exit 1 if any source failed)
+skills-update --check           # only list which sources have updates waiting
+./01-setup.sh                   # idempotent: config + MCP; reports (does NOT apply) skill updates
 ./02-doctor.sh                  # full health check
+./03-vm-up.sh --help            # every environment variable of the VM bring-up, with consequences
 ```
+Skill updates are never applied unattended: `SKILLS_AUTO_APPLY=1` (or `skills-update --yes`) is the
+explicit opt-in, and `AUTO_YES=1` does not count.
 
 ## Monitoring & parallel
 | Goal | Command |

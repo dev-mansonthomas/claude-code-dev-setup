@@ -248,10 +248,13 @@ task matches one, invoke it yourself without being asked (you may also name one 
   the confirmed skills **per-project** into `.claude/skills/` via **`skill-activate`** (`--list` /
   `<name>…` / `--list-active` / `--deactivate`). Re-run `/skills-review` as the project evolves. Keep it
   minimal — every activated skill adds its description to every session (token cost).
-- **Keeping skills current** → skill sources are git clones under `~/.claude/skill-sources`; they are
-  **refreshed (`git pull`) on every `./03-vm-up.sh`**, and **`skills-update`** does the same on demand
-  (reports each source's old→new HEAD). Third-party sources pull to latest HEAD (unpinned) — a
-  supply-chain action, so review changes if that matters.
+- **Keeping skills current** → skill sources are git clones under `~/.claude/skill-sources`.
+  `./03-vm-up.sh` / `01-setup.sh` only **fetch and report** which sources have upstream updates; they
+  are **never applied unattended** (third-party, unpinned, and a skill is instructions you follow).
+  Run **`skills-update`** to review each source's diff (files, skills added/removed) and approve it
+  (`--check` lists only; `--yes` / `SKILLS_AUTO_APPLY=1` applies unreviewed; `AUTO_YES=1` does **not**
+  approve). If a provisioning log says "updates waiting", tell the user to run `skills-update`; don't
+  apply them yourself.
 
 ## Tech stack defaults (override per project)
 
