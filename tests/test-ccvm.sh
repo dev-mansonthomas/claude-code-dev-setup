@@ -36,8 +36,8 @@ for flag in -h --help; do
   assert_eq "$flag exits 0 without colima"   "$CODE" "0"
   assert_eq "$flag prints the help"          "$(yn contains "$HELP" 'USAGE')" "yes"
 done
-for s in "USAGE" "<project>" "claude-args" "WHAT A SESSION DOES" "PERMISSION MODE" \
-         "ENVIRONMENT VARIABLES" "EXIT STATUS" "EXAMPLES" "--worktree"; do
+for s in "USAGE" "NEW PROJECT" "05-new-project.sh" "<project>" "claude-args" "WHAT A SESSION DOES" \
+         "PERMISSION MODE" "ENVIRONMENT VARIABLES" "EXIT STATUS" "EXAMPLES" "--worktree"; do
   assert_eq "help covers: $s"                "$(yn contains "$HELP" "$s")" "yes"
 done
 # Drift guard: every ${VAR:-…} the script reads must be documented in the help.

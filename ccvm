@@ -5,7 +5,8 @@
 #                                  — e.g. `ccvm <project> --worktree <stream>` for a parallel
 #                                  workstream in an isolated git worktree (docs/parallel-workstreams.md)
 #   ccvm                           shell into the VM (at ~/Projects)
-#   ccvm -h | --help               full help: arguments, environment variables, consequences
+#   ccvm -h | --help               full help: arguments, environment variables, consequences,
+#                                  and how to create a new project (./05-new-project.sh)
 # You edit on the host (files are mounted into the VM); Claude + Docker + tests run in the VM.
 set -euo pipefail
 PROJECTS="$HOME/Projects"
@@ -24,6 +25,21 @@ USAGE
                                    INSIDE the VM in that project, with claude-args forwarded.
   ccvm -h | --help                 This help. Only as the FIRST argument: `ccvm <project> --help`
                                    forwards --help to claude instead.
+
+NEW PROJECT
+  ccvm opens existing projects; it does not create one. Create it on the Mac, from the kit folder:
+    cd ~/Projects/claude-code-dev-setup && ./05-new-project.sh my-app
+  That creates ~/Projects/my-app from project-template/ (CLAUDE.md, docs/, .gitignore, secret-scan
+  hook, .worktreeinclude), fills in the name, runs `git init` and stages the files (no commit),
+  then launches `ccvm my-app` for you.
+  - The default destination is ../<name> relative to the CURRENT folder, so run it from the kit
+    folder. Elsewhere, pass the target: ./05-new-project.sh my-app ~/Projects/my-app. A project
+    outside ~/Projects is created but not opened (the VM can't see it).
+  - Names: letters, digits, . _ - only. It refuses to overwrite an existing folder.
+  - Options: --redis (add the Redis MCP to the project), --no-mcp (don't ask), --no-launch (just
+    create it; open it later with `ccvm my-app`). REDIS_URL=... sets the Redis connection string.
+  - First time on this Mac? Run ./03-vm-up.sh once (the VM) and ./04-vm-auth.sh (the token) first.
+  - Existing repo instead? Clone it under ~/Projects, then `ccvm <name>`.
 
 <project>
   A name under ~/Projects (e.g. `ccvm my-app` -> ~/Projects/my-app) or a path to a directory.
@@ -81,6 +97,8 @@ EXIT STATUS
   Otherwise the exit status of the VM shell / Claude session.
 
 EXAMPLES
+  cd ~/Projects/claude-code-dev-setup && ./05-new-project.sh my-app
+                                     create ~/Projects/my-app, then open it with ccvm
   ccvm my-app                        Claude in auto mode on ~/Projects/my-app
   CCVM_SAFE=1 ccvm my-app            same, approving every command
   ccvm my-app --worktree sinistres   a second, isolated work stream (one terminal per stream)
