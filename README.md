@@ -214,7 +214,8 @@ ccvm my-app                  # open VS Code on the host + a Claude session insid
 ```
 `./03-vm-up.sh --help` lists every option — they are **environment variables** (e.g.
 `SKILLS_AUTO_APPLY=1 ./03-vm-up.sh`) — with what each one changes; the same list is recapped at the
-end of every run.
+end of every run. `ccvm --help` does the same for `ccvm`: forwarded Claude arguments, the permission
+modes (`CCVM_SAFE=1`, `CCVM_YOLO=1`) and the token variables, with their consequences.
 `05-new-project.sh` auto-launches `ccvm` after scaffolding; monitoring (Grafana) runs in the same
 VM (no second VM). Inside the VM, Claude runs in `--permission-mode auto` (a safety classifier gates
 destructive ops) with a broad allow-list — it auto-runs the dev toolchain, so you work hands-off (see [docs/isolation.md](docs/isolation.md)).

@@ -23,6 +23,7 @@ claude -p "…"     # headless (scripts/CI)
 | **Shell into the VM** | `colima ssh` |
 | VM shell at `~/Projects` (OAuth token injected) | `ccvm` |
 | Edit on host + Claude **inside** the VM, at a project | `ccvm <project>` |
+| `ccvm` options, permission modes (`CCVM_SAFE`, `CCVM_YOLO`), token variables | `ccvm --help` |
 | Start / status / stop the VM | `./03-vm-up.sh` · `colima status` · `colima stop` |
 | One-off command in the VM | `colima ssh -- bash -lc '<cmd>'` |
 

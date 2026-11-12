@@ -28,10 +28,10 @@ doctor:
 lint:
 	@shellcheck -x --source-path=SCRIPTDIR 01-setup.sh 02-doctor.sh 03-vm-up.sh 04-vm-auth.sh 05-new-project.sh sync-project.sh grafana-up.sh grafana-down.sh ccvm git-pr-merge git-check scripts/*.sh tests/*.sh claude-config/hooks/*.sh project-template/.githooks/pre-commit && echo "shellcheck: clean"
 
-## test: run the unit tests (git utilities, skills updater, 03-vm-up option surface; no network)
+## test: run the unit tests (git utilities, skills updater, 03-vm-up + ccvm option surface; no network)
 .PHONY: test
 test:
-	@bash tests/test-git-pr-merge.sh && bash tests/test-git-check.sh && bash tests/test-20-skills.sh && bash tests/test-03-vm-up.sh
+	@bash tests/test-git-pr-merge.sh && bash tests/test-git-check.sh && bash tests/test-20-skills.sh && bash tests/test-03-vm-up.sh && bash tests/test-ccvm.sh
 
 ## new-project: scaffold a new project from project-template/ (NAME=... [DEST=...])
 .PHONY: new-project
