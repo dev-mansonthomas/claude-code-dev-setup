@@ -171,7 +171,8 @@ skill_changes() {  # skill_changes <dir> <filter> — "+name" added, "-name" rem
     fi
     case "$st" in A) sign="+" ;; D) sign="-" ;; *) sign="~" ;; esac
     printf '%s%s\n' "$sign" "$name"
-  done < <(git -C "$dir" diff --no-renames --name-status HEAD FETCH_HEAD 2>/dev/null)
+  done < <(git -C "$dir" diff --no-renames --name-status HEAD FETCH_HEAD 2>/dev/null) | awk '!seen[$0]++'
+  # ^ de-duplicate: a repo can ship the same skill twice (skills/x and plugins/p/skills/x).
 }
 
 show_update() {  # show_update <name> <dir> <changes> <nfiles>

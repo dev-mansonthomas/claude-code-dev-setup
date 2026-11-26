@@ -31,7 +31,7 @@ lint:
 ## test: run the unit tests (git utilities, skills updater, 03-vm-up + ccvm option surface; no network)
 .PHONY: test
 test:
-	@bash tests/test-git-pr-merge.sh && bash tests/test-git-check.sh && bash tests/test-20-skills.sh && bash tests/test-03-vm-up.sh && bash tests/test-ccvm.sh
+	@bash tests/test-git-pr-merge.sh && bash tests/test-git-check.sh && bash tests/test-20-skills.sh && bash tests/test-03-vm-up.sh && bash tests/test-ccvm.sh && bash tests/test-vm-clean.sh
 
 ## new-project: scaffold a new project from project-template/ (NAME=... [DEST=...])
 .PHONY: new-project
