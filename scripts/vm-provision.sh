@@ -319,7 +319,7 @@ if ! has packer; then
   pkt="$(mktemp -d)"; pkzip="packer_${PACKER_VERSION}_linux_${pkarch}.zip"
   if curl -fsSL "https://releases.hashicorp.com/packer/${PACKER_VERSION}/${pkzip}" -o "$pkt/$pkzip" 2>/dev/null \
      && curl -fsSL "https://releases.hashicorp.com/packer/${PACKER_VERSION}/packer_${PACKER_VERSION}_SHA256SUMS" -o "$pkt/SHA256SUMS" 2>/dev/null \
-     && ( cd "$pkt" && grep "$pkzip" SHA256SUMS | sha256sum -c - >/dev/null 2>&1 ) \
+     && ( cd "$pkt" && grep -E "[ *]${pkzip}\$" SHA256SUMS | sha256sum -c - >/dev/null 2>&1 ) \
      && unzip -o "$pkt/$pkzip" packer -d "$pkt" >/dev/null 2>&1 \
      && sudo install "$pkt/packer" /usr/local/bin/packer 2>/dev/null; then
     ok "Packer ${PACKER_VERSION}"
@@ -387,7 +387,7 @@ if ! has kubeconform; then
   kct="$(mktemp -d)"; kctar="kubeconform-linux-${kcarch}.tar.gz"
   if curl -fsSL "https://github.com/yannh/kubeconform/releases/download/${kcver}/${kctar}" -o "$kct/$kctar" 2>/dev/null \
      && curl -fsSL "https://github.com/yannh/kubeconform/releases/download/${kcver}/CHECKSUMS" -o "$kct/CHECKSUMS" 2>/dev/null \
-     && ( cd "$kct" && grep "$kctar" CHECKSUMS | sha256sum -c - >/dev/null 2>&1 ) \
+     && ( cd "$kct" && grep -E "[ *]${kctar}\$" CHECKSUMS | sha256sum -c - >/dev/null 2>&1 ) \
      && tar -xzf "$kct/$kctar" -C "$kct" kubeconform 2>/dev/null \
      && sudo install "$kct/kubeconform" /usr/local/bin/kubeconform 2>/dev/null; then
     ok "kubeconform ${kcver}"
@@ -406,7 +406,7 @@ if ! has helm-docs; then
     hdt="$(mktemp -d)"; hdtar="helm-docs_${hdver#v}_Linux_${hdarch}.tar.gz"
     if curl -fsSL "https://github.com/norwoodj/helm-docs/releases/download/${hdver}/${hdtar}" -o "$hdt/$hdtar" 2>/dev/null \
        && curl -fsSL "https://github.com/norwoodj/helm-docs/releases/download/${hdver}/checksums.txt" -o "$hdt/checksums.txt" 2>/dev/null \
-       && ( cd "$hdt" && grep "$hdtar" checksums.txt | sha256sum -c - >/dev/null 2>&1 ) \
+       && ( cd "$hdt" && grep -E "[ *]${hdtar}\$" checksums.txt | sha256sum -c - >/dev/null 2>&1 ) \
        && tar -xzf "$hdt/$hdtar" -C "$hdt" helm-docs 2>/dev/null \
        && sudo install "$hdt/helm-docs" /usr/local/bin/helm-docs 2>/dev/null; then
       ok "helm-docs ${hdver}"
@@ -422,6 +422,9 @@ fi
 # --- chart-testing (ct: lint + install-test Helm charts, for chart CI) — Helm chart authoring
 # `ct lint`'s yaml-lint + values-schema steps shell out to yamllint + yamale (installed below via
 # uv) and to helm/kubectl (above). Its default lint config + chart schema go to /etc/ct.
+# Checksum lookups in this file match the exact file name (anchored): since v3.15.0 ct's
+# checksums.txt also lists `<tarball>.sbom.json`, and an unanchored grep fed both lines to
+# `sha256sum -c`, which then failed on the missing .sbom.json.
 if ! has ct; then
   ctver="$(curl -fsSL https://api.github.com/repos/helm/chart-testing/releases/latest 2>/dev/null | jq -r '.tag_name // empty')"
   case "$(uname -m)" in aarch64|arm64) ctarch="arm64";; *) ctarch="amd64";; esac
@@ -430,7 +433,7 @@ if ! has ct; then
     ctt="$(mktemp -d)"; cttar="chart-testing_${ctver#v}_linux_${ctarch}.tar.gz"
     if curl -fsSL "https://github.com/helm/chart-testing/releases/download/${ctver}/${cttar}" -o "$ctt/$cttar" 2>/dev/null \
        && curl -fsSL "https://github.com/helm/chart-testing/releases/download/${ctver}/checksums.txt" -o "$ctt/checksums.txt" 2>/dev/null \
-       && ( cd "$ctt" && grep "$cttar" checksums.txt | sha256sum -c - >/dev/null 2>&1 ) \
+       && ( cd "$ctt" && grep -E "[ *]${cttar}\$" checksums.txt | sha256sum -c - >/dev/null 2>&1 ) \
        && tar -xzf "$ctt/$cttar" -C "$ctt" 2>/dev/null \
        && sudo install "$ctt/ct" /usr/local/bin/ct 2>/dev/null; then
       sudo mkdir -p /etc/ct 2>/dev/null || true
@@ -447,6 +450,45 @@ if ! has ct; then
   else
     warn "could not resolve the latest chart-testing version (skipping)."
   fi
+fi
+
+# --- task (go-task: Taskfile.yml runner — many projects' entry point: `task ci`, `task up`, …) -
+# Pinned release tarball + its published task_checksums.txt (SHA-256). To bump: set taskver to
+# the latest tag of github.com/go-task/task, then re-run ./03-vm-up.sh.
+if ! has task; then
+  taskver="v3.54.0"; case "$(uname -m)" in aarch64|arm64) taskarch="arm64";; *) taskarch="amd64";; esac
+  say "installing task ${taskver} (${taskarch}-linux)…"
+  tkt="$(mktemp -d)"; tktar="task_linux_${taskarch}.tar.gz"
+  if curl -fsSL "https://github.com/go-task/task/releases/download/${taskver}/${tktar}" -o "$tkt/$tktar" 2>/dev/null \
+     && curl -fsSL "https://github.com/go-task/task/releases/download/${taskver}/task_checksums.txt" -o "$tkt/task_checksums.txt" 2>/dev/null \
+     && ( cd "$tkt" && grep -E "[ *]${tktar}\$" task_checksums.txt | sha256sum -c - >/dev/null 2>&1 ) \
+     && tar -xzf "$tkt/$tktar" -C "$tkt" task 2>/dev/null \
+     && sudo install "$tkt/task" /usr/local/bin/task 2>/dev/null; then
+    ok "task ${taskver}"
+  else
+    warn "task install failed (optional; run Taskfile targets by hand)."
+  fi
+  rm -rf "$tkt"
+fi
+
+# --- kind (Kubernetes IN Docker: a throwaway local cluster on the VM's own Docker) -----------
+# A KinD cluster lives entirely inside the VM (nodes are Docker containers on the Colima engine),
+# so its kubeconfig grants nothing outside the VM: `kind create cluster`, then kubectl/helm
+# against THAT cluster, is fine here. Remote/cloud clusters stay host-side. Pinned binary + its
+# published .sha256sum. To bump: set kindver to the latest tag of github.com/kubernetes-sigs/kind.
+if ! has kind; then
+  kindver="v0.33.0"; case "$(uname -m)" in aarch64|arm64) kindarch="arm64";; *) kindarch="amd64";; esac
+  say "installing kind ${kindver} (${kindarch}-linux)…"
+  kdt="$(mktemp -d)"; kdbin="kind-linux-${kindarch}"
+  if curl -fsSL "https://github.com/kubernetes-sigs/kind/releases/download/${kindver}/${kdbin}" -o "$kdt/$kdbin" 2>/dev/null \
+     && curl -fsSL "https://github.com/kubernetes-sigs/kind/releases/download/${kindver}/${kdbin}.sha256sum" -o "$kdt/${kdbin}.sha256sum" 2>/dev/null \
+     && ( cd "$kdt" && sha256sum -c "${kdbin}.sha256sum" >/dev/null 2>&1 ) \
+     && sudo install "$kdt/$kdbin" /usr/local/bin/kind 2>/dev/null; then
+    ok "kind ${kindver}"
+  else
+    warn "kind install failed (optional; local KinD clusters won't run in the VM)."
+  fi
+  rm -rf "$kdt"
 fi
 
 # --- Go toolchain (official tarball — apt lags; go.dev/VERSION is always the latest stable) --
@@ -508,10 +550,11 @@ fi
 # PINNED to an exact version + SHA256 — obscura is a third-party project and publishes no checksums,
 # so we verify the bytes before installing. To bump: set OBSCURA_VERSION and recompute both SHA256s
 # (`shasum -a 256 obscura-<arch>-linux-stealth.tar.gz`). The notifier below flags newer releases.
-OBSCURA_VERSION="0.2.0"
-OBSCURA_SHA256_AARCH64="d9b55448043815872d6fdc9d51aca7efd4055abff41fe3dd3fb512718c746bee"
-OBSCURA_SHA256_X86_64="4b0fe0ff32a2e17e33b1e3d67bfb06e8f4d875bdffa86aa766277232422dfde7"
-if ! has obscura; then
+# The pin is the desired state: a VM with another installed version is upgraded/downgraded to it.
+OBSCURA_VERSION="0.2.6"
+OBSCURA_SHA256_AARCH64="403b4c8e3bcf777748a870fbb32c9281e997a6c30c5f8377c17305287fc3811f"
+OBSCURA_SHA256_X86_64="ac8057374ec1b5cabb78ea2d08b2ed890d21d156a42b1ac23357fd049edc08c5"
+if ! has obscura || [ "$(obscura --version 2>/dev/null | awk 'NR==1{print $2}')" != "$OBSCURA_VERSION" ]; then
   case "$(uname -m)" in
     aarch64|arm64) obarch="aarch64"; obsha="$OBSCURA_SHA256_AARCH64" ;;
     *)             obarch="x86_64";  obsha="$OBSCURA_SHA256_X86_64" ;;

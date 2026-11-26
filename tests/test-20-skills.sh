@@ -184,6 +184,17 @@ assert_eq "default mode is check"      "$(bash -c ". '$SCRIPT'; printf %s \"\$MO
 assert_eq "AUTO_YES=1 does NOT approve updates" "$(AUTO_YES=1 bash -c ". '$SCRIPT'; printf %s \"\$MODE\"" 2>/dev/null)" "check"
 assert_eq "SKILLS_AUTO_APPLY=1 -> yes" "$(SKILLS_AUTO_APPLY=1 bash -c ". '$SCRIPT'; printf %s \"\$MODE\"" 2>/dev/null)" "yes"
 
+# --- 16b. a skill shipped twice in one repo (skills/x + plugins/p/skills/x) is reported once ----
+R2="$T/dup"; git init -q "$R2"
+mkdir -p "$R2/skills/base"; echo b > "$R2/skills/base/SKILL.md"
+git -C "$R2" add -A; git -C "$R2" commit -q -m base
+mkdir -p "$R2/skills/delta" "$R2/plugins/p/skills/delta"
+echo d > "$R2/skills/delta/SKILL.md"; echo d > "$R2/plugins/p/skills/delta/SKILL.md"
+git -C "$R2" add -A; git -C "$R2" commit -q -m dup
+git -C "$R2" rev-parse HEAD > "$T/dup-new"; git -C "$R2" reset -q --hard HEAD~1
+cp "$T/dup-new" "$R2/.git/FETCH_HEAD"
+assert_eq "duplicate skill reported once" "$(skill_changes "$R2" "" | grep -c '^+delta$')" "1"
+
 # --- 17. skills-update wrapper: own help, resolves through a PATH symlink ------------------------
 ln -s "$ROOT/scripts/skills-update.sh" "$T/skills-update"
 SUHELP="$("$T/skills-update" --help 2>&1)"; CODE=$?

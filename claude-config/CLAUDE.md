@@ -175,6 +175,11 @@ from the host.** When driving a project toward deployment:
   authenticating to a cluster and applying to it is **host/deploy-side**. For **Helm chart authoring**
   the VM also has **`helm-docs`** (generate the values README) and **`ct`** (chart-testing: `ct lint` /
   `ct install`; its yaml-lint + values-schema steps use bundled `yamllint`/`yamale`, config in `/etc/ct`).
+  **`kind`** (Kubernetes in Docker) is the one exception to "no live cluster": a KinD cluster runs
+  **entirely inside the VM** (its nodes are containers on the VM's Docker), so `kind create cluster`
+  and `kubectl`/`helm install` against **that local cluster** are fine here. Remote/cloud clusters
+  stay host-side. **`task`** (go-task) is installed: when a project has a `Taskfile.yml`, run its
+  targets (`task --list`, `task ci`, …) instead of re-typing the commands by hand.
   **`obscura`** (stealth headless browser, its own MCP, VM-only) is a **fallback** for web research —
   default to `WebSearch`/`WebFetch`, and switch to the **obscura** MCP only when a site blocks /
   filters / CAPTCHAs you, or a page needs JS rendering. It's not the default path. Respect
@@ -189,10 +194,15 @@ from the host.** When driving a project toward deployment:
 - **Disk full / "no space left" in the VM?** The VM's **root FS is ~19 GB and SEPARATE from the
   60 GB Docker disk** (`/mnt/lima-colima`), so caches under `~` and the scratchpad under `/tmp` fill
   it, not Docker. Run **`vm-clean`** to reclaim space: it clears re-downloadable caches (npm, uv,
-  pip, Go, Cargo registry, Maven repo, .NET NuGet, apt) and stale Claude scratchpad (idle >60 min).
+  pip, Go, Cargo registry, Maven repo, .NET NuGet, apt) and stale Claude scratchpad (idle >60 min),
+  and prunes what silently piles up: **old Claude Code binaries** (300-400 MB each; never the current
+  one or one a running session uses), **Playwright browser revisions** the pinned Playwright no longer
+  uses (keeps the pinned ones), and Chromium temp profiles (`scoped_dir*`) idle for over a day.
   **Consequences:** the *next* build/install re-downloads those caches (a one-time slowdown), and any
   temp files from idle sessions are gone. It **never** touches `~/Projects`, git, credentials, or
-  installed toolchains (rustup, Node, uv Pythons, Playwright browsers). `vm-clean --docker` also
+  installed toolchains (rustup, Node, uv Pythons, the pinned Playwright browsers). Long-lived
+  sessions keep their own Claude binary and MCP servers alive (RAM too): close idle ones, then re-run
+  `vm-clean` to free their binaries. `vm-clean --docker` also
   prunes the Docker disk; `vm-clean --scratch-all` purges *all* scratchpad (incl. the live session).
 
 ## Documentation — two audiences, always

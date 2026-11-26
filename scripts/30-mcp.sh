@@ -59,11 +59,18 @@ fi
 # --- Playwright ------------------------------------------------------------
 # --browser chromium: use Playwright's bundled Chromium (installed by vm-provision). WITHOUT this the
 # MCP defaults to the "chrome" channel (branded Google Chrome), which has NO arm64 Linux build → the
-# MCP fails to launch a browser in the VM. (Re-run needs a fresh register; add_mcp skips if it exists.)
+# MCP fails to launch a browser in the VM.
 # PINNED (not @latest): vm-provision installs the browsers for THIS exact version, so the two can't
-# drift. Bump both together via scripts/versions.env. If a stale @latest is already registered from a
-# previous run, re-register: `claude mcp remove playwright -s user && ./01-setup.sh` (or ./03-vm-up.sh).
-add_mcp playwright npx -y "@playwright/mcp@${PW_MCP_VERSION}" --browser chromium
+# drift. Bump both together via scripts/versions.env. add_mcp skips an existing entry, so an entry
+# registered with another version (e.g. a stale @latest from before the pin, which then asks for
+# browser revisions that aren't installed) is removed first and re-registered with the pin.
+PW_SPEC="@playwright/mcp@${PW_MCP_VERSION}"
+if mcp_exists playwright && ! "$CLAUDE" mcp get playwright 2>/dev/null | grep -qF -- "$PW_SPEC "; then
+  info "MCP 'playwright' is registered with another version — re-registering as $PW_SPEC"
+  "$CLAUDE" mcp remove playwright -s user >/dev/null 2>&1 \
+    || warn "Could not remove the old 'playwright' entry (not user scope?) — fix it with: claude mcp list"
+fi
+add_mcp playwright npx -y "$PW_SPEC" --browser chromium
 
 # --- Sequential thinking ---------------------------------------------------
 add_mcp sequential-thinking npx -y @modelcontextprotocol/server-sequential-thinking
